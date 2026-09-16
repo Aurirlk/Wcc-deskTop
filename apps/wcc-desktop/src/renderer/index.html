@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WCC Desktop</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside class="nav">
+      <div class="brand">
+        <div class="brand-mark">WCC</div>
+        <div>
+          <div class="brand-title">战役 AI Harness</div>
+          <div class="brand-sub">Desktop 2.0 · WorkBuddy-style</div>
+        </div>
+      </div>
+      <nav class="nav-list">
+        <button class="nav-item active" data-view="home">首页</button>
+        <button class="nav-item" data-view="chat">会话</button>
+        <button class="nav-item" data-view="workbench">工作台</button>
+        <button class="nav-item" data-view="maps">地图</button>
+        <button class="nav-item" data-view="check">检查</button>
+        <button class="nav-item" data-view="build">构建</button>
+        <button class="nav-item" data-view="extensions">扩展</button>
+        <button class="nav-item" data-view="settings">设置</button>
+      </nav>
+      <div class="nav-foot">
+        <div id="status-pill" class="pill">连接中…</div>
+        <div id="forge-box" class="pill" style="margin-top:8px;display:block;line-height:1.35">forge 检测中…</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="crumb">当前工作区</div>
+          <div id="project-path" class="crumb-path">—</div>
+        </div>
+        <div class="top-actions">
+          <label class="expert-label">专家
+            <select id="expert-select" class="select"></select>
+          </label>
+          <button id="btn-pick" class="btn ghost">切换项目</button>
+        </div>
+      </header>
+
+      <!-- 首页 -->
+      <section id="view-home" class="view active">
+        <div class="panel home-hero">
+          <h2>三步开始做战役</h2>
+          <ol class="steps" id="home-steps">
+            <li data-step="model">配置模型（DeepSeek / OpenAI 兼容）</li>
+            <li data-step="forge">（可选）打开 wc3-forge 以改图</li>
+            <li data-step="chat">在会话中生成第一章并 lua_check</li>
+          </ol>
+          <div class="row">
+            <button class="btn primary" data-goto="settings">去配置模型</button>
+            <button class="btn ghost" data-goto="chat">打开会话</button>
+            <button class="btn ghost" data-goto="workbench">打开工作台</button>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="panel">
+            <h3 class="panel-h">能力</h3>
+            <ul class="list" id="home-caps">
+              <li>流式对话 + 工具审批</li>
+              <li>Lua 静态检查（禁 Wait / 泄漏）</li>
+              <li>wc3-forge MCP 改图转发</li>
+              <li>战役圣经与章节树</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-h">健康状态</h3>
+            <pre id="home-health" class="code compact">加载中…</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- 会话 -->
+      <section id="view-chat" class="view">
+        <div id="timeline" class="timeline" aria-live="polite"></div>
+        <div id="approval" class="approval hidden">
+          <div class="approval-title">工具需要确认</div>
+          <pre id="approval-detail"></pre>
+          <div class="approval-actions">
+            <button id="btn-allow" class="btn primary">允许一次</button>
+            <button id="btn-deny" class="btn ghost">拒绝</button>
+          </div>
+        </div>
+        <form id="composer" class="composer">
+          <textarea id="input" rows="3" placeholder="描述战役需求… 可输入 @src/map/chapter_01.lua 引用文件，或 /skill.md 加载技能"></textarea>
+          <div class="composer-row">
+            <span class="hint">流式回复 · 写文件与 forge_* 需审批</span>
+            <button type="submit" class="btn primary" id="btn-send">发送</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- 工作台 -->
+      <section id="view-workbench" class="view">
+        <div class="wb-tabs">
+          <button class="wb-tab active" data-wb="tree">章节</button>
+          <button class="wb-tab" data-wb="dialogue">对话时间轴</button>
+          <button class="wb-tab" data-wb="quest">任务</button>
+          <button class="wb-tab" data-wb="spawn">刷怪</button>
+          <button class="wb-tab" data-wb="bible">圣经</button>
+        </div>
+
+        <div class="wb-pane active" id="wb-tree">
+          <div class="panel">
+            <h3 class="panel-h">章节树</h3>
+            <ul class="list" id="chapter-tree">加载中…</ul>
+            <div class="row" style="margin-top:10px">
+              <button id="btn-tree-refresh" class="btn ghost">刷新</button>
+              <span id="wb-overview" class="hint"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wb-pane" id="wb-dialogue">
+          <div class="panel">
+            <h3 class="panel-h">对话时间轴</h3>
+            <p class="muted">从 <code>Dialogue.Play</code> 近似解析；可视化台词顺序与镜头点。</p>
+            <div id="dialogue-timeline" class="dialogue-tl">加载中…</div>
+          </div>
+        </div>
+
+        <div class="wb-pane" id="wb-quest">
+          <div class="panel">
+            <h3 class="panel-h">任务状态</h3>
+            <div id="quest-list">加载中…</div>
+          </div>
+        </div>
+
+        <div class="wb-pane" id="wb-spawn">
+          <div class="panel">
+            <h3 class="panel-h">刷怪波次</h3>
+            <div id="spawner-list">加载中…</div>
+          </div>
+        </div>
+
+        <div class="wb-pane" id="wb-bible">
+          <div class="panel">
+            <h3 class="panel-h">战役圣经</h3>
+            <label class="field">标题 <input id="bible-title" class="input" /></label>
+            <label class="field">WC3 版本 <input id="bible-ver" class="input" /></label>
+            <label class="field">单位 (JSON 数组) <textarea id="bible-units" class="input mono" rows="4"></textarea></label>
+            <label class="field">区域 (JSON 数组) <textarea id="bible-regions" class="input mono" rows="4"></textarea></label>
+            <div class="row">
+              <button id="btn-bible-save" class="btn primary">保存圣经</button>
+              <span id="bible-msg" class="hint"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 地图 -->
+      <section id="view-maps" class="view">
+        <div class="panel">
+          <h3 class="panel-h">按主题推荐（对应「哪里下老图 / 图库大」）</h3>
+          <p class="muted">推荐的是<strong>搜索入口与平台首页</strong>，不是本站镜像。下载后到下方扫描本地库，再交给 WCC/forge。</p>
+          <div id="maps-recs">加载中…</div>
+          <h3 class="panel-h" style="margin-top:16px">添加自定义推荐</h3>
+          <label class="field">标题 <input id="rec-title" class="input" placeholder="例如：怀旧守图站" /></label>
+          <label class="field">说明 <input id="rec-hint" class="input" placeholder="可选" /></label>
+          <label class="field">链接1 标签 <input id="rec-l1-label" class="input" placeholder="打开 XX 搜索" /></label>
+          <label class="field">链接1 URL <input id="rec-l1-url" class="input" placeholder="https://..." /></label>
+          <label class="field">链接2 URL（可选） <input id="rec-l2-url" class="input" placeholder="https://..." /></label>
+          <div class="row">
+            <button id="btn-rec-add" class="btn primary">保存到 .wcc</button>
+            <span id="rec-add-msg" class="hint"></span>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-h">地图站与平台</h3>
+          <p class="muted">点击「打开」会在系统浏览器打开官网；请自行下载地图后扫描本地库。WCC 不爬站、不批量镜像。</p>
+          <div id="maps-sources" class="maps-grid">加载中…</div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-h">本地地图库</h3>
+          <p class="muted">扫描项目 <code>maps/</code> 与文档中的 Warcraft III Maps 目录。</p>
+          <div class="row">
+            <button id="btn-maps-scan" class="btn primary">扫描本地 .w3x</button>
+            <span id="maps-scan-msg" class="hint"></span>
+          </div>
+          <ul class="list" id="maps-local-list"></ul>
+        </div>
+      </section>
+
+      <!-- 检查 -->
+      <section id="view-check" class="view">
+        <div class="panel">
+          <h3 class="panel-h">Lua 静态检查</h3>
+          <p class="muted">规则：禁 Wait / TriggerSleepAction / PolledWait；死亡 RemoveUnit；循环 Location；虚构 API。</p>
+          <div class="row">
+            <button id="btn-check" class="btn primary">对 src 运行检查</button>
+          </div>
+          <pre id="check-out" class="code"></pre>
+        </div>
+      </section>
+
+      <!-- 构建 -->
+      <section id="view-build" class="view">
+        <div class="panel">
+          <h3 class="panel-h">构建到地图脚本包</h3>
+          <p class="muted">
+            将 <code>src/</code> + <code>wcc-lib</code> 打包为单文件 <code>war3map.lua</code>（require 内联），
+            输出到项目 <code>dist/build/</code>。把该文件导入 World Editor 即可进图；完整 MPQ 写入需 mpyq/WE。
+          </p>
+          <label class="field">入口模块 <input id="build-entry" class="input" value="src.main" /></label>
+          <div class="row">
+            <button id="btn-build" class="btn primary">执行 build_map</button>
+            <span id="build-msg" class="hint"></span>
+          </div>
+          <pre id="build-out" class="code"></pre>
+        </div>
+      </section>
+
+      <!-- 扩展 -->
+      <section id="view-extensions" class="view">
+        <div class="panel">
+          <h3 class="panel-h">wc3-forge</h3>
+          <div id="forge-detail" class="muted">…</div>
+          <div class="row">
+            <button id="btn-forge-refresh" class="btn ghost">刷新 Forge</button>
+          </div>
+          <h3 class="panel-h" style="margin-top:16px">工具列表</h3>
+          <ul class="list" id="tool-list"></ul>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section id="view-settings" class="view">
+        <div class="panel">
+          <h3 class="panel-h">模型（OpenAI 兼容）</h3>
+          <label class="field">Base URL <input id="cfg-base" class="input" placeholder="https://api.deepseek.com/v1" /></label>
+          <label class="field">API Key <input id="cfg-key" class="input" type="password" placeholder="sk-..." /></label>
+          <label class="field">模型名 <input id="cfg-model" class="input" placeholder="deepseek-chat" /></label>
+          <label class="field row-inline">
+            <input type="checkbox" id="cfg-auto" /> 自动批准工具（慎用）
+          </label>
+          <label class="field">专家默认
+            <select id="cfg-expert" class="select"></select>
+          </label>
+          <div class="row">
+            <button id="btn-cfg-save" class="btn primary">保存配置</button>
+            <span id="cfg-msg" class="hint"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Onboarding modal -->
+  <div id="onboarding" class="onb hidden" role="dialog" aria-modal="true" aria-label="首次使用引导">
+    <div class="onb-card">
+      <h2>欢迎使用 WCC Desktop</h2>
+      <p class="muted">魔兽战役 AI Harness · 完成下列步骤即可开始。之后可在设置中重新打开本引导。</p>
+      <ol class="onb-steps" id="onb-steps"></ol>
+      <div class="row" style="justify-content:flex-end;margin-top:16px">
+        <button id="btn-onb-skip" class="btn ghost">稍后再说</button>
+        <button id="btn-onb-start" class="btn primary">开始配置</button>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

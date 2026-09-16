@@ -1,0 +1,33 @@
+{
+  "units": [
+    { "rawcode": "n001", "name": "腐化卫士", "hp": 1200, "mana": 300 },
+    { "rawcode": "n002", "name": "食尸鬼精锐", "hp": 800 }
+  ],
+  "waves": [
+    {
+      "id": "ch1_wave_a",
+      "unitId": "ugho",
+      "count": 5,
+      "interval": 30,
+      "waves": 3,
+      "x": 1000,
+      "y": 2000,
+      "targetX": 0,
+      "targetY": 0
+    }
+  ],
+  "dialogue": [
+    { "speaker": "阿尔萨斯", "text": "我们到了，斯坦恩布莱德。", "x": 1000, "y": 2000 },
+    { "speaker": "乌瑟尔", "text": "保持警惕，王子殿下。" }
+  ],
+  "quests": [
+    {
+      "id": "rescue_villagers",
+      "title": "拯救村民",
+      "description": "消灭亡灵，拯救村民",
+      "type": "main",
+      "objectives": ["消灭亡灵入侵者", "拯救被困村民 (0/5)"],
+      "rewards": ["经验值: 500", "金币: 100"]
+    }
+  ]
+}

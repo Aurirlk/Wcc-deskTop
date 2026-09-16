@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WorkBuddy 调研 · WCC Harness 对照</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #151c26;
+      --ink: #e8eaed;
+      --muted: #8b93a1;
+      --accent: #7eb6ff;
+      --accent2: #7ee0a8;
+      --line: #2a3544;
+      --warn: #e8c07a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0 0 6px;
+      letter-spacing: 0.02em;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 24px;
+    }
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 28px 0 12px;
+      padding-left: 10px;
+      border-left: 3px solid var(--accent);
+    }
+    h2.g { border-left-color: var(--accent2); }
+    p, li { color: #c5cdd8; font-size: 14px; }
+    ul { padding-left: 1.2em; margin: 8px 0; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .card.left h3 { color: var(--accent); }
+    .card.right h3 { color: var(--accent2); }
+    .card p { margin: 0; font-size: 12.5px; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #1a2332;
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 12px;
+    }
+    td { color: #c5cdd8; }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: #1a2820;
+      color: var(--accent2);
+      border: 1px solid #2a4f3f;
+    }
+    .diagram {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+    .diagram img, .diagram object {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .note {
+      margin-top: 20px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #1a1f18;
+      border: 1px solid #3a4a30;
+      color: var(--warn);
+      font-size: 13px;
+    }
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 12px;
+      background: #1a2332;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #a8c8e8;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>WorkBuddy 调研 × WCC 桌面 Harness</h1>
+    <div class="sub">产品形态已对齐：WorkBuddy 式 <strong>Electron 桌面端</strong>（非 Web 优先）· 计划见 PROJECT-PLAN.md v1.1 · 2026-09-13</div>
+
+    <h2>WorkBuddy 是什么</h2>
+    <p>
+      腾讯系<strong>桌面端 AI 工作助手</strong>（workbuddy.cn / WorkBuddy AI），与 CodeBuddy 同生态。
+      不是网页聊天框，而是完整 <strong>桌面 Agent Harness</strong>：常驻会话、本机工具、Skill/MCP、多 Agent、长任务自动化。
+      社区类比：国产 Claude Code / 桌面 Agent 操作系统——「模型是大脑，Harness 是操作系统」。
+    </p>
+
+    <h2>核心优势</h2>
+    <div class="grid">
+      <div class="card left"><h3>桌面原生 Harness</h3><p>会话常驻、文件读写、无人值守长任务，不止问答。</p></div>
+      <div class="card left"><h3>工程化完整</h3><p>记忆分层、权限 Hooks、Skill 懒加载、MCP、SubAgent。</p></div>
+      <div class="card left"><h3>中国生态密</h3><p>Skill、公众号、办公文档、多账号周边极多。</p></div>
+      <div class="card left"><h3>官方 Bench</h3><p>Code/Web/Office/Security 四轨真实工作评测。</p></div>
+    </div>
+
+    <h2>使用原理（六层）</h2>
+    <p>
+      UI → Sidecar/会话运行时 → Agent Loop → 工具/记忆 → 权限审计。
+      Prompt 由身份、记忆、项目上下文、Skill 片段<strong>运行时拼装</strong>；大输出外部化；高风险动作走审批。
+      客户端为 Electron（增强工具经 CDP 注入可证）。
+    </p>
+
+    <h2 class="g">对 WCC 的映射</h2>
+    <table>
+      <thead>
+        <tr><th>WorkBuddy</th><th>WCC 魔兽 Harness</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Agent Loop + Sidecar</td><td>战役会话；改图走 MCP 子进程</td></tr>
+        <tr><td>Skill / MCP Connector</td><td><code>wcc-skill</code> + wc3-forge MCP + 自研 wcc-mcp</td></tr>
+        <tr><td>权限 / Hooks</td><td>写图确认 + <code>wcc-lua-check</code> 门禁</td></tr>
+        <tr><td>记忆</td><td>战役项目、章节进度、用户偏好</td></tr>
+        <tr><td>Bench 思维</td><td>自建战役任务评测集</td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="g">架构对照图</h2>
+    <div class="diagram">
+      <img src="wcc-harness-vs-workbuddy.svg" alt="WorkBuddy 与 WCC 六层对照" />
+    </div>
+
+    <div class="note">
+      <strong>v1.1 架构决策</strong>：主形态为桌面 App（Electron Main/Renderer + Sidecar Agent Loop），战役工作台嵌在桌面壳内；地图数据层挂 wc3-forge MCP，逻辑层自研。与 wc3-forge 互补。完整计划：<code>PROJECT-PLAN.md</code>；调研：<code>docs/workbuddy-research.md</code>。
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "@wcc/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "build": "echo 'package with electron-builder later'"
+  },
+  "optionalDependencies": {
+    "electron": "^33.0.0"
+  }
+}
