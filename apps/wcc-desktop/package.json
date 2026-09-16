@@ -9,6 +9,6 @@
     "build": "echo 'package with electron-builder later'"
   },
   "optionalDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^44.4.1"
   }
 }
