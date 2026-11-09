@@ -123,8 +123,8 @@ set WCC_VSCODE_EXE=D:\Programs\VSCode\Code.exe
 set WC3FORGE_EXE=D:\Programs\wc3-forge\wc3-forge.exe
 python scripts/create-shortcuts.py --with-vscode --with-forge
 
-:: 4) 放到子文件夹，避免桌面散落
-python scripts/create-shortcuts.py --desktop "%USERPROFILE%\Desktop\WCC"
+:: 4) 放到子文件夹，避免桌面散落（路径以 --dry-run 打印的 Desktop 为准；本机是 D:\Desktop）
+python scripts/create-shortcuts.py --desktop "<你的桌面路径>\WCC"
 
 :: 5) 验收：读回所有 .lnk 的目标 / 工作目录 / 参数
 python scripts/create-shortcuts.py --list
