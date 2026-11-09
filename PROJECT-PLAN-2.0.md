@@ -3,6 +3,11 @@
 > 参考：`D:\Program Files\AI_novelsTool_obsdian`（PyQt6 网文写作桌面，多 Agent + 记忆 + MCP + 工作台）  
 > 本仓库对照物：`PROJECT-PLAN.md` v1.1 MVP（Electron + Sidecar + forge 转发 + 流式）  
 > 日期：2026-09-15
+>
+> ⚠️ 状态校正（2026-11-09）：下表「导出：`wcc build`：库+业务打进 w3x」**尚未实现** ——
+> 现有 `build_map`（`packages/wcc-sidecar/src/build-map.js`）只产出 `dist/build/war3map.lua` + `src-tree/`，
+> 不写二进制 `.w3x`；仓库内也没有 `.w3x` 与 MPQ 依赖。
+> 该功能的实现路线、四条替代方案与代码凭据见 [docs/MAP-GENERATION-PLAN.md](docs/MAP-GENERATION-PLAN.md) §2.6。
 
 ---
 
