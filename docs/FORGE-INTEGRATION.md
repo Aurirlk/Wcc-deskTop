@@ -1,5 +1,7 @@
 # WCC 如何融入 wc3-forge 生态（查证结论与行动方案）
 
+> **2026-11-10 仓库状态补记**：本文「未 git commit / 未推送 / origin=gitclone.com」均为**撰写当时**状态。当天成果已全部提交（`7fe0922`..`83ced5f`，6 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开；`main` 与本地一致）；GitHub `Aurirlk/Wcc-deskTop` 仍停在 `12b9169`（push 受阻未同步）。权威说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
+
 > 查证日期：2026-11-09 · 依据 GitHub API / README / CLAUDE.md / CREDITS.md / LICENSE 实测
 > 目标对象：`StephenSHorton/wc3-forge` v1.0.7
 > ⚠️ 状态更新（11-09 晚）：WCC 侧已落地 `harness/` 层，把「C2：forge 当增强 MCP 执行层」具体化为
@@ -150,7 +152,7 @@ No rush, and thanks again for the project.
 | `https://api.github.com` | **200** | Python `urllib` 稳定；未认证限流 60 次/小时 |
 | `https://gh-proxy.com` | **200** | 可加速 `git clone` |
 | `raw.githubusercontent.com` | curl 返回 000，**Python urllib 可用** | 读文件请用 `D:\Python\python.exe` |
-| `gitclone.com`（你 WCC 仓库现有 remote） | 镜像 | 🔴 **只读，不能 push、不能提 PR**。提 PR 必须走 `github.com` 原地址 |
+| `gitclone.com`（旧 remote，已弃用） | 镜像 | 🔴 **只读，不能 push、不能提 PR**；2026-11-10 实测 502 已失效。提 PR 必须走 `github.com` 原地址 |
 
 **最省事路径（零 git、零梯子，适合 L1 文档 PR）**：
 1. 浏览器打开 `https://github.com/StephenSHorton/wc3-forge` → 点 **Fork**

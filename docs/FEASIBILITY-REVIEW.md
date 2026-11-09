@@ -1,11 +1,13 @@
 # WCC 独立 Harness + 二分 PR 方案 · 可行性分析
 
+> **2026-11-10 仓库状态补记**：本文「未 git commit / 未推送 / origin=gitclone.com」均为**撰写当时**状态。当天成果已全部提交（`7fe0922`..`83ced5f`，6 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开；`main` 与本地一致）；GitHub `Aurirlk/Wcc-deskTop` 仍停在 `12b9169`（push 受阻未同步）。权威说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
+
 > 2026-11-09 · 针对「WCC 继续做点击即用的独立 harness；代码二分，只把优化部分提 PR；wc3-forge 增强 MCP」这一方案的核查与评估。
 > 本文是**当时的分析快照**：写作时未改动任何项目代码、未提交 git、未发送任何外部 Issue/PR。
 > ⚠️ **状态更新（2026-11-09 晚）**：论断 A 中「上下文工程 + 质量门禁」已补上并验证，
 > 见 [`docs/HARNESS-IMPLEMENTATION.md`](HARNESS-IMPLEMENTATION.md)；新增 `harness/` 独立目录（不在 workspaces、
 > 未改根 `package.json`、未重生成 lock）。**打包分发红线、Electron 版本不一致、启动器硬编码路径、
-> 尚无 forge 联调实证、C1 PR 仍未发** —— 这些结论全部继续有效。仍未替你做任何 git commit。
+> 尚无 forge 联调实证、C1 PR 仍未发** —— 这些结论全部继续有效。（写作时尚未做 git commit；后续已统一提交并推送，见文首补记。）
 
 ---
 
@@ -114,13 +116,13 @@ WCC = **MIT**（`LICENSE` 已核）；wc3-forge = **GPL-3.0-or-later**（源自 
 
 ### 3.3 工程前提（当前不就绪）
 
-- 🔴 `origin` = `https://gitclone.com/github.com/Aurirlk/Wcc-deskTop.git` —— **只读镜像，不能 push、不能提 PR**。提 PR 必须走 `github.com` 网页版，或另加一个 github remote。
+- 🔴 ~~`origin` = `gitclone.com` 只读镜像~~ → **2026-11-10 已改为** `https://github.com/Aurirlk/Wcc-deskTop.git`，并新增 `gitee` remote；gitclone.com 实测 502 已失效。提 PR 仍需走 `github.com` 网页版。
 - 🟠 工作区脏，拆分前需先归类：
   - `M package-lock.json` —— `npm install` 同步了 `hasInstallScript` 与 `apps/wcc-desktop` 的 `devDependencies → optionalDependencies`，属**正常同步、非手工改动**；
   - `M packages/wcc-lua-check/src/cli.js` —— `git diff` **无实质内容**，仅状态标记；
   - `?? docs/ASSETS-GUIDE.md`、`?? docs/FORGE-INTEGRATION.md`、`?? vendor/`、`?? wcc-启动器.bat` —— 本轮我方新增，需先决定归档还是提交。
   - 🟠 **状态更新（11-09 晚）**：又新增 `?? harness/`、`?? docs/HARNESS-IMPLEMENTATION.md`、`?? docs/FEASIBILITY-REVIEW.md`、`?? docs/HARNESS-REFERENCE.md`，以及 `M wcc-skill/` 8 份文档（仅加 steering 头部元数据，正文未动，`git diff --stat` = +50 行 / 0 删除）。**拆分基线比写作时更脏，仍建议先归类再谈二分**。
-- 按你一贯习惯，**未替你做任何 git commit**。
+- 按你一贯习惯，**写作时**未替你做任何 git commit（后续已统一提交并推送，见文首补记）。
 
 ### 3.4 结论
 

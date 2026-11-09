@@ -164,7 +164,7 @@ python scripts/create-shortcuts.py --list
 7. 双击 `WCC 控制台.lnk`，依次跑菜单 `[2]` check、`[3]` test、`[5]` harness demo+selftest。
 8. 在 `NEW-MACHINE-SETUP.md` §8 的勾选项里补一条「桌面入口已重建并读回校验」。
 
-> 🟠 本机尚未在新机器执行过此流程；步骤 1 的 clone 依赖远端同步完成，见 §9。
+> 🟠 本机尚未在新机器执行过此流程；步骤 1 的 clone 现已可走私有 Gitee 仓库（需凭据），或直接用离线归档恢复，见 §9 与 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
 ---
 
@@ -206,7 +206,7 @@ python scripts/create-shortcuts.py --list
 | 在**新机器**实际跑一遍 §6 流程 | 🔴 未做（换机尚未发生） |
 | 改动本机桌面 / 注册表 / 生成到真实桌面 | 🔴 未做 |
 | 把 `.lnk` 或任何本机绝对路径提交进仓库 | 🔴 未做，且不建议 |
-| 云端同步 | 🟠 本轮新增的文档与脚本需随下一次推送一并同步；截至撰写时 GitHub `git push` 因网络/凭据未成功、Gitee 仓库尚未建立，**不要假设已在远端** |
+| 云端同步 | ✅ 2026-11-10 已把全部 6 个提交推送到 **Gitee 私有仓库** `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不对外公开）；🔴 GitHub 官方仓库仍是 `12b9169`，未同步 |
 
 ---
 

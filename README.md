@@ -1,6 +1,8 @@
 # Warcraft Campaign Craft (WCC)
 
 > 魔兽争霸3战役 · **桌面 AI Harness**（WorkBuddy 式）· Lua 1.31+
+>
+> 当前主同步目标：**Gitee 私有仓库** <https://gitee.com/wei-kaijie/Wcc-deskTop>（项目仍是半成品，刻意不公开）；GitHub <https://github.com/Aurirlk/Wcc-deskTop> 截至 2026-11-10 仍停在 `12b9169`（push 受阻未同步）。换机、凭据与归档见 [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) §1。
 
 ## 这是什么
 

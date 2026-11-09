@@ -1,5 +1,7 @@
 # 从「中间可编译文件」到「可玩地图」：编译链专项调研
 
+> **2026-11-10 仓库状态补记**：本文「未 git commit / 未推送 / origin=gitclone.com」均为**撰写当时**状态。当天成果已全部提交（`7fe0922`..`83ced5f`，6 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开；`main` 与本地一致）；GitHub `Aurirlk/Wcc-deskTop` 仍停在 `12b9169`（push 受阻未同步）。权威说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
+
 > 2026-11-10 · `MAP-GENERATION-PLAN.md` 的续篇，专攻你指出的最难一项：
 > **「如何生成中间可以编译的文件，然后用工具编译成地图」**。
 > 同时把 **Warcraft 3 MCP Server** 从「README 简介」升级为**源码级档案**。
@@ -9,7 +11,7 @@
 > - 🟠 **官方文档 / 二手资料**：注明来源，不当作已验证事实
 > - 🔴 **未实现 / 未验证 / 缺口**：明确写「没有」，不把「计划中」写成「已完成」
 >
-> **本轮状态**：只新增 / 更新 Markdown。**未下载 w2l、未安装 grill / JassHelper、未 clone MCP Server、未启动 WE / 游戏 / forge、未跑任何端到端改图、未改业务代码、未装新依赖、未 git commit、未发外部 Issue/PR。**
+> **本轮状态（撰写当时）**：只新增 / 更新 Markdown。**未下载 w2l、未安装 grill / JassHelper、未 clone MCP Server、未启动 WE / 游戏 / forge、未跑任何端到端改图、未改业务代码、未装新依赖、未 git commit、未发外部 Issue/PR。**
 
 ---
 

@@ -1,5 +1,7 @@
 # WCC AI 开发 Harness · 实现与讨论
 
+> **2026-11-10 仓库状态补记**：本文「未 git commit / 未推送 / origin=gitclone.com」均为**撰写当时**状态。当天成果已全部提交（`7fe0922`..`83ced5f`，6 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开；`main` 与本地一致）；GitHub `Aurirlk/Wcc-deskTop` 仍停在 `12b9169`（push 受阻未同步）。权威说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
+
 > 2026-11-09 晚 · 把此前四份调研稿（`HARNESS-REFERENCE.md` / `FEASIBILITY-REVIEW.md` / `FORGE-INTEGRATION.md` / `ASSETS-GUIDE.md`）的结论**落成可运行代码**，并回答「真做 Harness 需要什么脚本 / 工具注入怎么配合 / TUI 怎么做 / 隔壁 WC3 能抄什么」。
 > 本文是**实现记录**，不是规划稿。所有「✅」都有对应文件与实测命令；所有「🔴 / 🟠」都明确列出未做。
 
@@ -16,7 +18,7 @@
 | 🟠 未接入 | **未改动** `packages/wcc-sidecar/src/agent.js`、`server.js`、`tools.js`；现有 Agent Loop 仍全量注入 skill、仍手动 check、仍 `guard < 8` 硬循环 |
 | 🟠 未接入 | `harness/` 故意**不进 npm workspaces**（根 `package.json` 未改、`package-lock.json` 未因本次新增而重生成），保持零依赖、零回归 |
 | 🔴 未做 | `electron-builder` 打包、去掉启动器硬编码 node 路径、provider 设置页、真 forge 联调、独立 stdio MCP server、交互式 TUI 真机验收 |
-| 🔴 未做 | 任何 git commit、任何外部 Issue/PR。按你的习惯留给你处置 |
+| ✅ 已提交 | 当天成果共 6 个本地提交，已推送到 Gitee 私有仓库；🔴 **仍未发任何外部 Issue/PR** |
 | ⚠️ 实测异常 | 当前 shell 读不到用户级 `WC3FORGE_EXE`（`probe` 返回 `(unset)`）；用户级环境变量需重新登录/重启资源管理器后才对新进程可见。**本次没有启动过 `wc3-forge.exe`，也没有 forge 联调实证** |
 
 > 一句话：调研里的「最划算三件」（steering 条件加载、hooks 质量门禁、spec 落盘）已经**有代码、有测试、有 CLI**；但它们是**可独立运行的旁路层**，还没接进主 Agent Loop。接进去才是产品化，本文 §7 列为第一步。

@@ -1,6 +1,6 @@
 # 换机迁移清单（Clone → 可开发 → 可验证）
 
-> 2026-11-10 · 因开发机更换而编写。目的是让**新机器从 GitHub 拉下来就能恢复到今天的研究状态**，而不是靠人记忆补环境。
+> 2026-11-10 · 因开发机更换而编写。目的是让**新机器拉下仓库就能恢复到今天的研究状态**，而不是靠人记忆补环境。当前主仓库是 **Gitee 私有仓库**（项目为半成品，刻意不公开），GitHub 尚未同步，见 §1。
 > 本文件是操作清单，不是完成声明；涉及本机实测的数据均标注来源，未在新机器验证的步骤标 🟠。
 
 ---
@@ -16,19 +16,28 @@
 
 | 项 | 值 | 备注 |
 |---|---|---|
-| 上游仓库 | `https://github.com/Aurirlk/Wcc-deskTop.git` | GitHub API 实测：public、`main`、MIT |
-| 旧 `origin` | `https://gitclone.com/github.com/Aurirlk/Wcc-deskTop.git` | 🔴 **2026-11-10 实测 502 已失效**，且是只读镜像，不能 push |
-| 基线 commit | `12b9169` — `feat: WCC desktop AI harness monorepo (v1.2)` | push 前本地与远端一致 |
-| 作者身份 | `WCC Dev <wcc-dev@users.noreply.github.com>` | 沿用原提交，避免产生新身份 |
+| **当前主仓库（Gitee）** | `https://gitee.com/wei-kaijie/Wcc-deskTop.git` | ✅ 2026-11-10 建仓并推送成功；**私有**（项目为半成品，刻意不公开）、`main`；远端 HEAD 与本地一致、tree 161 条目 |
+| GitHub 官方仓库 | `https://github.com/Aurirlk/Wcc-deskTop.git` | 🔴 **仍停在 `12b9169`**：`git push` 因代理 502 + 无凭据失败，本次成果未同步 |
+| 本地 `origin` | `https://github.com/Aurirlk/Wcc-deskTop.git` | 已从失效镜像切到官方地址 |
+| 本地 `gitee` | `https://gitee.com/wei-kaijie/Wcc-deskTop.git` | 干净 URL，**不含任何凭据**；推送令牌只走一次性 URL |
+| 旧镜像 remote | `https://gitclone.com/github.com/Aurirlk/Wcc-deskTop.git` | 🔴 2026-11-10 实测 502 已失效，且只读不能 push |
+| 基线 commit | `12b9169` — `feat: WCC desktop AI harness monorepo (v1.2)` | 推送前本地与 GitHub 远端一致 |
+| 本次成果提交 | `7fe0922`..`83ced5f`（6 个） | ✅ 已在 Gitee `main` 上 |
+| 作者身份 | `WCC Dev <wcc-dev@users.noreply.github.com>` | 沿用原提交（noreply 形式，不含个人邮箱） |
+
+仓库是**私有**的，匿名 `git clone` / API 会返回 404 或 401。新机器请用一次性带令牌的 URL clone，然后立刻把凭据从配置里去掉：
 
 ```bash
-# 新机器：直接走官方地址，不要再用 gitclone.com 镜像
-git clone https://github.com/Aurirlk/Wcc-deskTop.git
+git clone https://<Gitee用户名>:<私人令牌>@gitee.com/wei-kaijie/Wcc-deskTop.git Wcc-deskTop
 cd Wcc-deskTop
-git log -3 --oneline          # 核对本次研究成果的 commit 是否已同步
+git remote set-url origin https://gitee.com/wei-kaijie/Wcc-deskTop.git   # 去掉 URL 里的令牌
+git log -6 --oneline          # 应能看到 docs / harness / scripts 相关提交
 ```
 
-🟠 国内网络若 clone 慢，可临时用镜像加速**只读拉取**，但 `git push` 必须切回官方地址；镜像站的 push 会被拒或被缓存。
+🟠 更省事、且不依赖任何云端认证的恢复方式：直接带走 `D:\净土\WCC-2026-11-10-research.bundle` / `.patch` / `.zip` 三份离线归档（见 §3），在新机器 `git clone <bundle>` 或解压即可。
+
+> 🔴 **不要用 GitHub 地址 clone 后以为拿到了最新成果**：GitHub 此刻仍是 `12b9169`。
+> 若之后恢复了 GitHub push 权限，记得把 Gitee 上的 6 个提交补推过去，两边再保持一致。
 
 ---
 
@@ -127,7 +136,7 @@ set WCC_MODEL_NAME=deepseek-chat
 | 游戏本体与原版 WE | `D:\净土\kkkk\魔兽争霸3冰封王座\` | `worldedit.exe`、`war3.mpq`(451 MB)；**版本 1.26.0.6401** |
 | 地图素材库 | `D:\净土\kkkk\魔兽争霸3冰封王座\Maps\` | 实测 **559 个 `.w3x` + 60 个 `.w3m`**；`.gitignore` 排除 `*.w3x`，不会入库 |
 | 个人数据 | `D:\360MoveData\` | 魔兽存档、QQ/微信数据，曾确认是**唯一副本**，不可丢 |
-| 凭据 | 环境变量 / `.wcc/` / GitHub PAT | API key 与 git 凭据不随仓库走 |
+| 凭据 | 环境变量 / `.wcc/` / GitHub PAT / **Gitee 私人令牌** | API key 与 git 凭据不随仓库走；令牌只走一次性 URL，不写入 `.git/config` |
 | 工具箱与报表 | `D:\Desktop\开源工具箱\`、`D:\电脑清洁报告.md`、`D:\Python\` | 与项目无关但属于本机整理成果 |
 | 桌面快捷方式 | `D:\Desktop\WCC 控制台.lnk` 等 4 个 + 工具箱 20 个 | 🔴 **不入库、不必带走**：目标全写死 `D:\...` 绝对路径；本机生成脚本当初也未入库。新机器用 `scripts/create-shortcuts.py` 重建，见 [DEPLOYMENT-SHORTCUTS.md](DEPLOYMENT-SHORTCUTS.md) |
 
@@ -161,7 +170,7 @@ PowerShell 实测 `war3.exe` / `game.dll` = **1.26.0.6401 经典版**，而 `REA
 
 在新机器执行下面四条，全部符合才算恢复到位：
 
-- [ ] `git log` 能看到本次研究成果的提交，且 `git remote get-url origin` 是 `github.com`（不是 gitclone.com）
+- [ ] `git log` 能看到本次研究成果的 6 个提交，且 `git remote get-url gitee` 指向私有 Gitee 仓库（不是 gitclone.com）；带凭据的 `git ls-remote gitee main` 的 HEAD 与本地一致
 - [ ] `npm test` 27 pass、`npm run check` 13 files / 0 issues
 - [ ] harness 自测 15/15、`demo` 全链路跑通（离线，无需 key）
 - [ ] 明确记下新机器的目标补丁版本，并回填到 `docs/MAP-COMPILE-PIPELINE.md` 的目标补丁决策

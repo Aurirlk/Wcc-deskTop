@@ -1,5 +1,7 @@
 # Harness 框架横向借鉴评估：Kiro / Strands Harness / Deep Agents
 
+> **2026-11-10 仓库状态补记**：本文「未 git commit / 未推送 / origin=gitclone.com」均为**撰写当时**状态。当天成果已全部提交（`7fe0922`..`83ced5f`，6 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开；`main` 与本地一致）；GitHub `Aurirlk/Wcc-deskTop` 仍停在 `12b9169`（push 受阻未同步）。权威说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
+
 > 2026-11-09 · 为「WCC 继续作为独立、点击即用的 harness」寻找可借鉴的架构设计。
 > 本文是**当时的调研快照**：写作时未引入任何依赖、未改动项目代码、未 git commit。
 > ⚠️ **状态更新（2026-11-09 晚）**：第 3 节的落地动作已逐条实现为可运行代码，见
@@ -146,4 +148,4 @@ WCC 现状（已实测）：`apps/wcc-desktop` 自动拉起 Sidecar + 健康看�
 1. 三者指代已全部确认：**Kiro / Strands Harness / Deep Agents**。
 2. 第 3 节建议的 **#2 + #3（steering 条件加载 + hooks）** 以及 #1/#4/#5/#6/#7/#8/#10 已落地，
    逐条对账与验证结果见 [`docs/HARNESS-IMPLEMENTATION.md`](HARNESS-IMPLEMENTATION.md) §1。
-3. 本文保留为分析稿；实现稿同样**未替你做任何 git commit**，按你习惯留给你处置。
+3. 本文保留为分析稿；实现稿**写作时**同样未替你做任何 git commit（后续已统一提交并推送，见文首补记）。
