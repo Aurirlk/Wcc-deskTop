@@ -60,6 +60,7 @@ set WCC_MODEL_NAME=deepseek-chat
 ## 文档
 
 - [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) — **换机迁移清单**：clone → 依赖 → 回归验证，不入库的本地配置、必须单独带走的数据、目标补丁决策  
+- [docs/DEPLOYMENT-SHORTCUTS.md](docs/DEPLOYMENT-SHORTCUTS.md) — **部署快捷方式建议**：本机桌面实测、换机失效原因、三层入口模型、最小快捷方式集、`scripts/create-shortcuts.py` 用法与红线  
 - [docs/MAP-GENERATION-PLAN.md](docs/MAP-GENERATION-PLAN.md) — **地图生成与优化计划**：拼图/借鉴/随机/素材库四路线、人物摆放与触发器的代码凭据、Python+Lua+WE 外部支持、Warcraft 3 MCP Server、统一 IR 架构  
 - [docs/MAP-COMPILE-PIPELINE.md](docs/MAP-COMPILE-PIPELINE.md) — **编译链专项**：文本化/打包/编译三层澄清、`w2l`/`grill`/`jasshelper`/WE Save 命令证据、MCP Server 源码级档案、本机 1.26 版本硬约束、中间文件目录契约与 P0 验收  
 - [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md) — **Harness 实现记录**：调研→代码对账、脚本/工具注入、TUI、WC3 借鉴、验证命令  

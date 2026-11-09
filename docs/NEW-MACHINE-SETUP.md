@@ -8,7 +8,7 @@
 ## 0. 一句话结论
 
 ✅ 研究成果（文档 + `harness/` 零依赖实现 + `wcc-skill` steering 元数据）**全部是可移植的纯文本**，随仓库走；
-🔴 有四类东西**不会随 git 走**，换机前必须单独带走：本机游戏与地图素材、API 凭据、用户级环境变量、IDE 本地配置。见 §5。
+🔴 另有五类东西**不会随 git 走**：本机游戏与地图素材、API 凭据、用户级环境变量、IDE 本地配置需要单独带走；桌面 `.lnk` 快捷方式**不必带走、也不该入库**，到新机器用 `scripts/create-shortcuts.py` 重建即可，见 [DEPLOYMENT-SHORTCUTS.md](DEPLOYMENT-SHORTCUTS.md) 与 §5。
 
 ---
 
@@ -67,6 +67,9 @@ node harness/bin/wcc-harness.mjs demo       # 离线全链路，不需要 API ke
 也可以直接双击 `wcc-启动器.bat`，菜单 `[5]` 会在一行里跑 harness demo + selftest。
 该启动器已改为**不写死任何机器账号路径**：优先用系统 `PATH` 里的 `node`，找不到才回退到 `%USERPROFILE%\.workbuddy\...`。
 
+> 桌面上的快捷方式不随仓库走。新机器用 `python scripts/create-shortcuts.py --dry-run` 核对路径后生成，
+> 详见 [DEPLOYMENT-SHORTCUTS.md](DEPLOYMENT-SHORTCUTS.md)。
+
 ---
 
 ## 3. 研究成果清单（本次要同步的内容）
@@ -82,7 +85,7 @@ node harness/bin/wcc-harness.mjs demo       # 离线全链路，不需要 API ke
 | `vendor/wc3-lua-annotations/` | 第三方 War3 Lua API 定义（MIT, Copyright 2019 Lazy Knight，**LICENSE 保留**） |
 | `README.md` / `PROJECT-PLAN-2.0.md` | 文档索引、1.26 试玩警告、过期「build 打进 w3x」虚标校正 |
 
-🔴 **刻意不提交**：`package-lock.json` 与 `packages/wcc-lua-check/src/cli.js` 的本地改动属于本机 `npm install` 副作用与 CRLF 换行差异，不是研究成果；推上去只会污染新机器的依赖树。
+🟠 **补记（2026-11-10 后续，校正本节初稿）**：按「全部成果不要遗漏」的要求，`package-lock.json` 与 `packages/wcc-lua-check/src/cli.js` 最终**已一并提交**（`a26f620 chore: sync local npm install result and lua-check cli line endings`）。二者本质仍是本机 `npm install` 副作用与换行差异，**不是研究成果**；新机器若遇依赖树异常，直接 `npm install` 重新生成即可，不要把这份 lock 当作权威基线。
 
 ---
 
@@ -126,6 +129,7 @@ set WCC_MODEL_NAME=deepseek-chat
 | 个人数据 | `D:\360MoveData\` | 魔兽存档、QQ/微信数据，曾确认是**唯一副本**，不可丢 |
 | 凭据 | 环境变量 / `.wcc/` / GitHub PAT | API key 与 git 凭据不随仓库走 |
 | 工具箱与报表 | `D:\Desktop\开源工具箱\`、`D:\电脑清洁报告.md`、`D:\Python\` | 与项目无关但属于本机整理成果 |
+| 桌面快捷方式 | `D:\Desktop\WCC 控制台.lnk` 等 4 个 + 工具箱 20 个 | 🔴 **不入库、不必带走**：目标全写死 `D:\...` 绝对路径；本机生成脚本当初也未入库。新机器用 `scripts/create-shortcuts.py` 重建，见 [DEPLOYMENT-SHORTCUTS.md](DEPLOYMENT-SHORTCUTS.md) |
 
 ---
 
@@ -161,3 +165,4 @@ PowerShell 实测 `war3.exe` / `game.dll` = **1.26.0.6401 经典版**，而 `REA
 - [ ] `npm test` 27 pass、`npm run check` 13 files / 0 issues
 - [ ] harness 自测 15/15、`demo` 全链路跑通（离线，无需 key）
 - [ ] 明确记下新机器的目标补丁版本，并回填到 `docs/MAP-COMPILE-PIPELINE.md` 的目标补丁决策
+- [ ] 桌面入口已用 `scripts/create-shortcuts.py` 重建，且 `--list` 读回的目标全部指向本机真实路径
