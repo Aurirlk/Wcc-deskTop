@@ -1,0 +1,15 @@
+{
+  "name": "wcc-harness-standalone",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Zero-dependency WCC agent harness layer: steering, hooks, spec, scratch, providers, budget, middleware, tool injection, TUI.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "cli": "node bin/wcc-harness.mjs",
+    "tui": "node bin/wcc-harness.mjs tui"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
