@@ -1,3 +1,9 @@
+---
+id: patterns-task-data-codegen
+mode: manual
+keywords: 表格,excel,数据驱动
+priority: 30
+---
 # 数据驱动代码生成（task-data-codegen）
 
 > 参考：War3ExcelTool（Excel→Lua/INI/JSON，BV1ce75zMErf）  

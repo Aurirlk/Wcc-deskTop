@@ -1,3 +1,10 @@
+---
+id: knowledge-project-structure
+mode: conditional
+fileMatch: "**/src/**,**/wcc.project.json"
+keywords: 目录,结构,require
+priority: 40
+---
 # WCC 项目结构规范 (Project Structure)
 
 > 本文档定义了 WCC 项目的标准目录结构和文件组织方式。

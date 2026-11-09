@@ -1,3 +1,9 @@
+---
+id: patterns-task-dialogue-sequence
+mode: manual
+keywords: 对话,过场,cinematic
+priority: 30
+---
 ﻿# 瀵硅瘽搴忓垪妯″紡妯℃澘 (Dialogue Sequence Pattern)
 
 > 鏈枃妗ｅ畾涔変簡榄斿吔浜夐湼3瀵硅瘽涓庤繃鍦虹郴缁熺殑鏍囧噯瀹炵幇妯″紡銆?

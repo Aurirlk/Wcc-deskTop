@@ -1,3 +1,9 @@
+---
+id: patterns-task-object-batch
+mode: manual
+keywords: 物编,批量,单位
+priority: 30
+---
 # 批量物编 / 单位生成模式（task-object-batch）
 
 > 参考：提百万联盟「LUA 快捷生成装备/单位」（BV1ab411B7JR、BV1Hb411t7sZ）  

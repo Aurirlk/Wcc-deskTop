@@ -1,3 +1,10 @@
+---
+id: knowledge-api-best-practices
+mode: conditional
+fileMatch: "**/*.lua"
+keywords: api,原生,函数
+priority: 55
+---
 # 魔兽争霸3 Lua API 最佳实践 (API Best Practices)
 
 > 本文档汇总了魔兽争霸3 Lua API 的使用注意事项和最佳实践。
