@@ -1,3 +1,9 @@
+---
+id: knowledge-conventions
+mode: conditional
+fileMatch: "**/*.lua"
+priority: 60
+---
 # WCC 编码规范 (Coding Conventions)
 
 > 本文档定义了 WCC 项目中的代码风格和命名规范。

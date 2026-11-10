@@ -1,3 +1,9 @@
+---
+id: skill
+mode: always
+priority: 100
+maxChars: 4000
+---
 # WCC AI 技能包总纲 (Skill Package Overview)
 
 > 本文档定义了 AI 助手在魔兽争霸3战役开发中的角色、约束和行为规范。

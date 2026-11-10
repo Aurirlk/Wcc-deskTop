@@ -15,4 +15,9 @@ coverage/
 # project-local secrets & state (may contain apiKey)
 **/.wcc/
 .wcc/
+# machine-local Windows shortcuts: absolute paths, never portable
+*.lnk
+# python bytecode from scripts/
+__pycache__/
+*.pyc
 

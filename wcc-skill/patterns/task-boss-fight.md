@@ -1,3 +1,9 @@
+---
+id: patterns-task-boss-fight
+mode: manual
+keywords: boss,阶段,技能循环
+priority: 30
+---
 # Boss战模式模板 (Boss Fight Pattern)
 
 > 本文档定义了魔兽争霸3 Boss战的标准实现模式。

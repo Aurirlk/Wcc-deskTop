@@ -1,3 +1,9 @@
+---
+id: patterns-task-dialogue-sequence
+mode: manual
+keywords: 对话,过场,cinematic
+priority: 30
+---
 # 对话序列模式模板 (Dialogue Sequence Pattern)
 
 > 本文档定义了魔兽争霸3对话与过场系统的标准实现模式。

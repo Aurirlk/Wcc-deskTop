@@ -1,9 +1,8 @@
 # Warcraft Campaign Craft (WCC)
 
-> ⚠️ **本目录为历史版本（v1.0），已停止维护。**  
-> 主线已迁移至：**https://github.com/Aurirlk/Wcc-deskTop**  
-> 现状计划见 `PROJECT-PLAN.md`（v1.2）与 `PROJECT-PLAN-2.0.md`。  
-> 对照分析与改进路线见本目录 [`项目状态与改进报告.md`](项目状态与改进报告.md)。
+> 魔兽争霸3战役 · **桌面 AI Harness**（WorkBuddy 式）· Lua 1.31+
+>
+> 当前主同步目标：**Gitee 私有仓库** <https://gitee.com/wei-kaijie/Wcc-deskTop>（项目仍是半成品，刻意不公开）；GitHub <https://github.com/Aurirlk/Wcc-deskTop> 截至 2026-11-10 仍停在 `12b9169`（push 受阻未同步）。换机、凭据与归档见 [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) §1。
 
 > 🎮 让 AI 成为你的魔兽争霸3战役开发搭档
 
@@ -77,13 +76,15 @@ code .
 
 | 模块 | 功能 |
 |------|------|
-| `wcc-core.lua` | 安全沙箱、内存泄漏防护、日志系统 |
-| `wcc-dialogue.lua` | 对话与过场系统 |
-| `wcc-quest.lua` | 任务追踪系统 |
-| `wcc-timer.lua` | 计时器管理 (setTimeout/setInterval) |
-| `wcc-spawner.lua` | 刷怪池系统 |
-| `wcc-math.lua` | 数学与坐标系工具库 |
-| `wcc-gc.lua` | 内存清理器 |
+| `wcc-lib/` | 发给地图项目的 Lua 运行时（core/timer/logger/gc/math/dialogue/quest/spawner/boss-fight） |
+| `wcc-skill/` | AI 编码规范与模式库 |
+| `apps/wcc-desktop/` | 桌面壳（会话 UI） |
+| `packages/wcc-sidecar/` | Agent Loop、工具、审批 |
+| `packages/wcc-lua-check/` | Lua 静态检查 |
+| `harness/` | **独立零依赖 Harness 层**（steering / hooks / spec / scratch / provider / budget / 中间件 / 工具注入 / TUI） |
+| `examples/demo-campaign/` | 示例战役 |
+| `docs/` | 计划、调研、实现记录 |
+| `attic/novel-workflow/` | 已隔离的小说工作流模板
 
 ### wcc-skill (AI技能包)
 
@@ -123,7 +124,18 @@ bossFight.Start({
 })
 ```
 
-### AI辅助开发
+Harness 层（独立目录、零依赖、**不进 npm workspaces**，不影响上面的命令）：
+
+```bat
+node --test harness/test/harness.test.js
+node harness/bin/wcc-harness.mjs demo
+node harness/bin/wcc-harness.mjs tui --static
+```
+
+> `harness/` 目前是**可独立运行的旁路层**，尚未接入 `agent.js` / `server.js`；
+> 已实现什么、未实现什么、如何接入，见 [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md)。
+
+模型（可选，Sidecar 环境变量）：
 
 在VSCode中对AI助手说：
 
@@ -131,9 +143,23 @@ bossFight.Start({
 
 AI会自动生成符合WCC规范的代码！
 
-## 🤝 贡献指南
+> ⚠️ 本仓库面向 **Lua 1.31+**。本机实测为 **War3 1.26.0.6401**（只支持 JASS），因此这台机器上**不能直接试玩 `war3map.lua`**。版本约束与三种可选路径见 [docs/MAP-COMPILE-PIPELINE.md §5](docs/MAP-COMPILE-PIPELINE.md)。  
 
-我们欢迎所有形式的贡献！
+## 文档
+
+- [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) — **换机迁移清单**：clone → 依赖 → 回归验证，不入库的本地配置、必须单独带走的数据、目标补丁决策  
+- [docs/DEPLOYMENT-SHORTCUTS.md](docs/DEPLOYMENT-SHORTCUTS.md) — **部署快捷方式建议**：本机桌面实测、换机失效原因、三层入口模型、最小快捷方式集、`scripts/create-shortcuts.py` 用法与红线  
+- [docs/MAP-GENERATION-PLAN.md](docs/MAP-GENERATION-PLAN.md) — **地图生成与优化计划**：拼图/借鉴/随机/素材库四路线、人物摆放与触发器的代码凭据、Python+Lua+WE 外部支持、Warcraft 3 MCP Server、统一 IR 架构  
+- [docs/MAP-COMPILE-PIPELINE.md](docs/MAP-COMPILE-PIPELINE.md) — **编译链专项**：文本化/打包/编译三层澄清、`w2l`/`grill`/`jasshelper`/WE Save 命令证据、MCP Server 源码级档案、本机 1.26 版本硬约束、中间文件目录契约与 P0 验收  
+- [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md) — **Harness 实现记录**：调研→代码对账、脚本/工具注入、TUI、WC3 借鉴、验证命令  
+- [docs/HARNESS-REFERENCE.md](docs/HARNESS-REFERENCE.md) — Kiro / Strands Harness / Deep Agents 调研  
+- [docs/FEASIBILITY-REVIEW.md](docs/FEASIBILITY-REVIEW.md) — 独立 Harness + 二分 PR 方案可行性  
+- [docs/FORGE-INTEGRATION.md](docs/FORGE-INTEGRATION.md) — forge 生态与许可证边界  
+- [docs/ASSETS-GUIDE.md](docs/ASSETS-GUIDE.md) — 素材来源指引  
+- [PROJECT-PLAN.md](PROJECT-PLAN.md) — v1.1 桌面 Harness 计划  
+- [docs/DEVELOPMENT-NOTES.md](docs/DEVELOPMENT-NOTES.md) — 注意事项与落地状态  
+- [docs/workbuddy-research.md](docs/workbuddy-research.md) — WorkBuddy 调研  
+- [index.html](index.html) — 调研摘要页  
 
 ### 如何贡献
 
