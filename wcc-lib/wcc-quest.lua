@@ -272,11 +272,9 @@ function WCC_Quest.CreateNativeQuest(quest)
     -- 设置任务描述
     QuestSetDescription(quest.questHandle, quest.description)
     
-    -- 添加任务目标；保存 item 句柄，不依赖 QuestGetItems
-    quest.itemHandles = {}
+    -- 添加任务目标
     for i, objective in ipairs(quest.objectives) do
-        local item = QuestItemCreate(quest.questHandle, objective.text)
-        quest.itemHandles[i] = item
+        QuestItemCreate(quest.questHandle, objective.text)
     end
     
     -- 显示任务
@@ -289,16 +287,15 @@ function WCC_Quest.UpdateNativeQuest(quest)
     if not quest.questHandle then
         return
     end
-
-    -- 用创建时保存的 item 句柄（不依赖存疑 QuestGetItems）
-    if quest.itemHandles then
-        for i, item in ipairs(quest.itemHandles) do
-            if item and quest.objectives[i] then
-                QuestItemSetCompleted(item, quest.objectives[i].completed)
-            end
+    
+    -- 更新任务目标状态
+    local questItems = QuestGetItems(quest.questHandle)
+    for i, item in ipairs(questItems) do
+        if quest.objectives[i] then
+            QuestItemSetCompleted(item, quest.objectives[i].completed)
         end
     end
-
+    
     -- 如果任务完成，标记为已完成
     if quest.status == WCC_Quest.STATUS_COMPLETED then
         QuestSetCompleted(quest.questHandle, true)

@@ -170,7 +170,7 @@ end
 
 --- 取消计时器
 --- @param timer timer 计时器句柄
-function M.Clear(timer)
+function M.ClearTimer(timer)
     if activeTimers[timer] then
         activeTimers[timer] = nil
         DestroyTimer(timer)

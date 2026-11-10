@@ -1,35 +1,40 @@
-﻿# 瀵硅瘽搴忓垪妯″紡妯℃澘 (Dialogue Sequence Pattern)
+# 对话序列模式模板 (Dialogue Sequence Pattern)
 
-> 鏈枃妗ｅ畾涔変簡榄斿吔浜夐湼3瀵硅瘽涓庤繃鍦虹郴缁熺殑鏍囧噯瀹炵幇妯″紡銆?
+> 本文档定义了魔兽争霸3对话与过场系统的标准实现模式。
+
 ---
 
-## 1. 妯″紡姒傝堪 (Pattern Overview)
+## 1. 模式概述 (Pattern Overview)
 
-### 1.1 璁捐鐩爣
+### 1.1 设计目标
 
-- 鏀寔澶氬彞鍙拌瘝鎸夐『搴忔挱鏀?- 鏀寔鐢靛奖妯″紡锛圕inematic Mode锛?- 鏀寔闀滃ご骞虫粦绉诲姩
-- 鏀寔"璺宠繃"鍔熻兘
-- 闃叉鍐呭瓨娉勬紡
+- 支持多句台词按顺序播放
+- 支持电影模式（Cinematic Mode）
+- 支持镜头平滑移动
+- 支持"跳过"功能
+- 防止内存泄漏
 
-### 1.2 鏍稿績缁勪欢
+### 1.2 核心组件
 
 ```
 DialogueSystem
-鈹溾攢鈹€ Sequence Manager (搴忓垪绠＄悊鍣?
-鈹溾攢鈹€ Cinematic Controller (鐢靛奖鎺у埗鍣?
-鈹溾攢鈹€ Camera Manager (闀滃ご绠＄悊鍣?
-鈹斺攢鈹€ Input Handler (杈撳叆澶勭悊鍣?
+├── Sequence Manager (序列管理器)
+├── Cinematic Controller (电影控制器)
+├── Camera Manager (镜头管理器)
+└── Input Handler (输入处理器)
 ```
 
 ---
 
-## 2. 鍩虹瀹炵幇 (Basic Implementation)
+## 2. 基础实现 (Basic Implementation)
 
-### 2.1 Dialogue 妯″潡
+### 2.1 Dialogue 模块
 
 ```lua
 --[[
-    瀵硅瘽涓庤繃鍦虹郴缁?    鏀寔澶氬彞鍙拌瘝銆佺數褰辨ā寮忋€侀暅澶存帶鍒躲€佽烦杩囧姛鑳?]]
+    对话与过场系统
+    支持多句台词、电影模式、镜头控制、跳过功能
+]]
 
 local Core = require("src.lib.wcc-core")
 local Timer = require("src.lib.wcc-timer")
@@ -37,7 +42,8 @@ local Logger = require("src.lib.wcc-logger")
 
 local Dialogue = {}
 
--- 鐘舵€佺鐞?local state = {
+-- 状态管理
+local state = {
     isPlaying = false,
     currentSequence = nil,
     currentIndex = 0,
@@ -45,28 +51,29 @@ local Dialogue = {}
     player = GetLocalPlayer()
 }
 
--- 閰嶇疆
+-- 配置
 local config = {
-    textSpeed = 0.05,      -- 姣忎釜瀛楃鏄剧ず鏃堕棿
-    autoAdvance = false,    -- 鑷姩鎺ㄨ繘
-    autoAdvanceDelay = 3.0, -- 鑷姩鎺ㄨ繘寤惰繜
-    cameraTransition = 2.0, -- 闀滃ご杩囨浮鏃堕棿
-    fadeTime = 1.0          -- 娣″叆娣″嚭鏃堕棿
+    textSpeed = 0.05,      -- 每个字符显示时间
+    autoAdvance = false,    -- 自动推进
+    autoAdvanceDelay = 3.0, -- 自动推进延迟
+    cameraTransition = 2.0, -- 镜头过渡时间
+    fadeTime = 1.0          -- 淡入淡出时间
 }
 
---- 鍒濆鍖栧璇濈郴缁?function Dialogue.Init()
-    Logger.Log("瀵硅瘽绯荤粺鍒濆鍖?)
+--- 初始化对话系统
+function Dialogue.Init()
+    Logger.Log("对话系统初始化")
     
-    -- 娉ㄥ唽璺宠繃浜嬩欢
+    -- 注册跳过事件
     Dialogue.RegisterSkipEvent()
 end
 
---- 鎾斁瀵硅瘽搴忓垪
---- @param sequence table 瀵硅瘽搴忓垪
---- @param callback function 瀹屾垚鍥炶皟
+--- 播放对话序列
+--- @param sequence table 对话序列
+--- @param callback function 完成回调
 function Dialogue.Play(sequence, callback)
     if state.isPlaying then
-        Logger.LogWarning("瀵硅瘽姝ｅ湪鎾斁涓?)
+        Logger.LogWarning("对话正在播放中")
         return
     end
     
@@ -75,56 +82,62 @@ function Dialogue.Play(sequence, callback)
     state.currentIndex = 0
     state.skipRequested = false
     
-    -- 杩涘叆鐢靛奖妯″紡
+    -- 进入电影模式
     Dialogue.EnterCinematicMode()
     
-    -- 鎾斁绗竴鍙?    Dialogue.PlayNext(callback)
+    -- 播放第一句
+    Dialogue.PlayNext(callback)
 end
 
---- 鎾斁涓嬩竴鍙?--- @param callback function 瀹屾垚鍥炶皟
+--- 播放下一句
+--- @param callback function 完成回调
 function Dialogue.PlayNext(callback)
     state.currentIndex = state.currentIndex + 1
     
     if state.currentIndex > #state.currentSequence then
-        -- 瀵硅瘽缁撴潫
+        -- 对话结束
         Dialogue.End(callback)
         return
     end
     
     local line = state.currentSequence[state.currentIndex]
     
-    -- 璁剧疆闀滃ご
+    -- 设置镜头
     if line.camera then
         Dialogue.MoveCamera(line.camera)
     end
     
-    -- 鏄剧ず瀵硅瘽
+    -- 显示对话
     Dialogue.ShowLine(line, function()
-        -- 绛夊緟鐜╁杈撳叆鎴栬嚜鍔ㄦ帹杩?        if config.autoAdvance then
+        -- 等待玩家输入或自动推进
+        if config.autoAdvance then
             Timer.SetTimeout(config.autoAdvanceDelay, function()
                 Dialogue.PlayNext(callback)
             end)
         else
-            -- 绛夊緟鐜╁鐐瑰嚮
+            -- 等待玩家点击
             Dialogue.WaitForInput(callback)
         end
     end)
 end
 
---- 鏄剧ず涓€琛屽璇?--- @param line table 瀵硅瘽琛?--- @param callback function 瀹屾垚鍥炶皟
+--- 显示一行对话
+--- @param line table 对话行
+--- @param callback function 完成回调
 function Dialogue.ShowLine(line, callback)
     local speaker = line.speaker or ""
     local text = line.text or ""
     local portrait = line.portrait
     
-    -- 鏄剧ず璇磋瘽鑰呭悕瀛?    if speaker ~= "" then
+    -- 显示说话者名字
+    if speaker ~= "" then
         DisplayTimedTextToPlayer(state.player, 0, 0, 999, "|cffffcc00" .. speaker .. "|r")
     end
     
-    -- 閫愬瓧鏄剧ず鏂囨湰
+    -- 逐字显示文本
     Dialogue.TypewriterEffect(text, function()
-        -- 鏄剧ず缁х画鎻愮ず
-        DisplayTimedTextToPlayer(state.player, 0, 0, 999, "|cff888888[鐐瑰嚮缁х画]|r")
+        -- 显示继续提示
+        DisplayTimedTextToPlayer(state.player, 0, 0, 999, "|cff888888[点击继续]|r")
         
         if callback then
             callback()
@@ -132,8 +145,9 @@ function Dialogue.ShowLine(line, callback)
     end)
 end
 
---- 鎵撳瓧鏈烘晥鏋?--- @param text string 鏂囨湰
---- @param callback function 瀹屾垚鍥炶皟
+--- 打字机效果
+--- @param text string 文本
+--- @param callback function 完成回调
 function Dialogue.TypewriterEffect(text, callback)
     local displayed = ""
     local index = 0
@@ -142,7 +156,7 @@ function Dialogue.TypewriterEffect(text, callback)
     local timer = Timer.SetInterval(config.textSpeed, function()
         index = index + 1
         if index > length then
-            Timer.Clear(timer)
+            Timer.ClearTimer(timer)
             if callback then
                 callback()
             end
@@ -150,16 +164,17 @@ function Dialogue.TypewriterEffect(text, callback)
         end
         
         displayed = displayed .. string.sub(text, index, index)
-        -- 鏇存柊鏄剧ず锛堣繖閲岀畝鍖栧鐞嗭紝瀹為檯闇€瑕佹竻闄ゆ棫鏂囨湰锛?        DisplayTimedTextToPlayer(state.player, 0, 0, 999, displayed)
+        -- 更新显示（这里简化处理，实际需要清除旧文本）
+        DisplayTimedTextToPlayer(state.player, 0, 0, 999, displayed)
     end)
 end
 
---- 绛夊緟鐜╁杈撳叆
---- @param callback function 鍥炶皟
+--- 等待玩家输入
+--- @param callback function 回调
 function Dialogue.WaitForInput(callback)
     local trig = CreateTrigger()
     
-    -- 娉ㄥ唽榧犳爣鐐瑰嚮浜嬩欢
+    -- 注册鼠标点击事件
     for i = 0, 15 do
         TriggerRegisterPlayerEvent(trig, Player(i), EVENT_PLAYER_MOUSE_DOWN)
     end
@@ -172,32 +187,34 @@ function Dialogue.WaitForInput(callback)
     end)
 end
 
---- 杩涘叆鐢靛奖妯″紡
+--- 进入电影模式
 function Dialogue.EnterCinematicMode()
-    -- 寮€鍚數褰辨ā寮?    CinematicModeBJ(true, GetPlayersAll())
+    -- 开启电影模式
+    CinematicModeBJ(true, GetPlayersAll())
     
-    -- 闅愯棌UI
+    -- 隐藏UI
     ShowInterface(false, 0)
     
-    -- 娣″叆
+    -- 淡入
     CinematicFadeBJ(bj_CINEFADETYPE_FADEIN, config.fadeTime, "ReplaceableTextures\\CameraMasks\\White_mask.tga", 0, 0, 0, 0)
 end
 
---- 閫€鍑虹數褰辨ā寮?function Dialogue.ExitCinematicMode()
-    -- 娣″嚭
+--- 退出电影模式
+function Dialogue.ExitCinematicMode()
+    -- 淡出
     CinematicFadeBJ(bj_CINEFADETYPE_FADEOUT, config.fadeTime, "ReplaceableTextures\\CameraMasks\\White_mask.tga", 0, 0, 0, 0)
     
     Timer.SetTimeout(config.fadeTime, function()
-        -- 鏄剧ずUI
+        -- 显示UI
         ShowInterface(true, 0)
         
-        -- 鍏抽棴鐢靛奖妯″紡
+        -- 关闭电影模式
         CinematicModeBJ(false, GetPlayersAll())
     end)
 end
 
---- 绉诲姩闀滃ご
---- @param camera table 闀滃ご閰嶇疆
+--- 移动镜头
+--- @param camera table 镜头配置
 function Dialogue.MoveCamera(camera)
     local x = camera.x or 0
     local y = camera.y or 0
@@ -207,7 +224,7 @@ function Dialogue.MoveCamera(camera)
     local fov = camera.fov or 70
     local duration = camera.duration or config.cameraTransition
     
-    -- 璁剧疆闀滃ご
+    -- 设置镜头
     PanCameraToTimedLocForPlayer(state.player, Location(x, y), duration)
     SetCameraFieldForPlayer(state.player, CAMERA_FIELD_TARGET_DISTANCE, distance, duration)
     SetCameraFieldForPlayer(state.player, CAMERA_FIELD_ANGLE_OF_ATTACK, angle, duration)
@@ -215,11 +232,12 @@ function Dialogue.MoveCamera(camera)
     SetCameraFieldForPlayer(state.player, CAMERA_FIELD_FIELD_OF_VIEW, fov, duration)
 end
 
---- 娉ㄥ唽璺宠繃浜嬩欢
+--- 注册跳过事件
 function Dialogue.RegisterSkipEvent()
     local trig = CreateTrigger()
     
-    -- 娉ㄥ唽ESC閿?    for i = 0, 15 do
+    -- 注册ESC键
+    for i = 0, 15 do
         TriggerRegisterPlayerEvent(trig, Player(i), EVENT_PLAYER_END_CINEMATIC)
     end
     
@@ -231,34 +249,36 @@ function Dialogue.RegisterSkipEvent()
     end)
 end
 
---- 璺宠繃瀵硅瘽
+--- 跳过对话
 function Dialogue.Skip()
     if not state.isPlaying then
         return
     end
     
-    Logger.Log("璺宠繃瀵硅瘽")
+    Logger.Log("跳过对话")
     
-    -- 蹇€熸樉绀烘墍鏈夊墿浣欐枃鏈?    for i = state.currentIndex, #state.currentSequence do
+    -- 快速显示所有剩余文本
+    for i = state.currentIndex, #state.currentSequence do
         local line = state.currentSequence[i]
         DisplayTimedTextToPlayer(state.player, 0, 0, 10, 
             "|cffffcc00" .. (line.speaker or "") .. "|r\n" .. (line.text or ""))
     end
     
-    -- 缁撴潫瀵硅瘽
+    -- 结束对话
     Dialogue.End()
 end
 
---- 缁撴潫瀵硅瘽
---- @param callback function 瀹屾垚鍥炶皟
+--- 结束对话
+--- @param callback function 完成回调
 function Dialogue.End(callback)
     state.isPlaying = false
     state.currentSequence = nil
     state.currentIndex = 0
     
-    -- 閫€鍑虹數褰辨ā寮?    Dialogue.ExitCinematicMode()
+    -- 退出电影模式
+    Dialogue.ExitCinematicMode()
     
-    Logger.Log("瀵硅瘽缁撴潫")
+    Logger.Log("对话结束")
     
     if callback then
         Timer.SetTimeout(config.fadeTime + 0.1, function()
@@ -267,7 +287,8 @@ function Dialogue.End(callback)
     end
 end
 
---- 鑾峰彇鎾斁鐘舵€?--- @return boolean 鏄惁姝ｅ湪鎾斁
+--- 获取播放状态
+--- @return boolean 是否正在播放
 function Dialogue.IsPlaying()
     return state.isPlaying
 end
@@ -277,15 +298,15 @@ return Dialogue
 
 ---
 
-## 3. 閰嶇疆绀轰緥 (Configuration Examples)
+## 3. 配置示例 (Configuration Examples)
 
-### 3.1 鍩虹瀵硅瘽閰嶇疆
+### 3.1 基础对话配置
 
 ```lua
 local dialogueSequence = {
     {
-        speaker = "闃垮皵钀ㄦ柉",
-        text = "鎴戜滑鍒颁簡锛屾柉鍧︽仼甯冭幈寰枫€?,
+        speaker = "阿尔萨斯",
+        text = "我们到了，斯坦恩布莱德。",
         camera = {
             x = 1000,
             y = 2000,
@@ -295,8 +316,8 @@ local dialogueSequence = {
         }
     },
     {
-        speaker = "涔岀憻灏?,
-        text = "淇濇寔璀︽儠锛岀帇瀛愭涓嬨€傝繖閲屽埌澶勯兘鏄骸鐏点€?,
+        speaker = "乌瑟尔",
+        text = "保持警惕，王子殿下。这里到处都是亡灵。",
         camera = {
             x = 1200,
             y = 2200,
@@ -306,8 +327,8 @@ local dialogueSequence = {
         }
     },
     {
-        speaker = "闃垮皵钀ㄦ柉",
-        text = "鎴戠煡閬撹鎬庝箞鍋氾紝涔岀憻灏斻€?,
+        speaker = "阿尔萨斯",
+        text = "我知道该怎么做，乌瑟尔。",
         camera = {
             x = 1000,
             y = 2000,
@@ -319,13 +340,13 @@ local dialogueSequence = {
 }
 ```
 
-### 3.2 甯︾壒鏁堢殑瀵硅瘽閰嶇疆
+### 3.2 带特效的对话配置
 
 ```lua
 local cinematicDialogue = {
     {
-        speaker = "鏃佺櫧",
-        text = "鍦ㄩ仴杩滅殑鍖楁柟锛屼竴鑲￠粦鏆楀姏閲忔鍦ㄨ嫃閱?..",
+        speaker = "旁白",
+        text = "在遥远的北方，一股黑暗力量正在苏醒...",
         camera = {
             x = 0,
             y = 5000,
@@ -340,8 +361,8 @@ local cinematicDialogue = {
         }
     },
     {
-        speaker = "姊呭皵鐢樺凹鏂?,
-        text = "闃垮皵钀ㄦ柉锛屼綘鐨勭帇鍥藉皢鍖栦负鐏扮儸锛?,
+        speaker = "梅尔甘尼斯",
+        text = "阿尔萨斯，你的王国将化为灰烬！",
         camera = {
             x = 1000,
             y = 3000,
@@ -355,53 +376,59 @@ local cinematicDialogue = {
 
 ---
 
-## 4. 浣跨敤鏂规硶 (Usage)
+## 4. 使用方法 (Usage)
 
-### 4.1 鍩烘湰浣跨敤
+### 4.1 基本使用
 
 ```lua
 local Dialogue = require("src.systems.wcc-dialogue")
 
--- 鍒濆鍖?Dialogue.Init()
+-- 初始化
+Dialogue.Init()
 
--- 鎾斁瀵硅瘽
+-- 播放对话
 Dialogue.Play({
-    {speaker = "闃垮皵钀ㄦ柉", text = "浣犲ソ锛屼箤鐟熷皵銆?},
-    {speaker = "涔岀憻灏?, text = "浣犲ソ锛岀帇瀛愭涓嬨€?}
+    {speaker = "阿尔萨斯", text = "你好，乌瑟尔。"},
+    {speaker = "乌瑟尔", text = "你好，王子殿下。"}
 }, function()
-    -- 瀵硅瘽缁撴潫鍚庣殑鍥炶皟
-    print("瀵硅瘽缁撴潫")
+    -- 对话结束后的回调
+    print("对话结束")
 end)
 ```
 
-### 4.2 涓嶣oss鎴橀泦鎴?
+### 4.2 与Boss战集成
+
 ```lua
 local BossFight = require("src.systems.boss-fight")
 local Dialogue = require("src.systems.wcc-dialogue")
 
--- Boss鎴樺墠瀵硅瘽
+-- Boss战前对话
 Dialogue.Play({
-    {speaker = "闃垮皵钀ㄦ柉", text = "缁堜簬鎵惧埌浣犱簡锛?},
-    {speaker = "姊呭皵鐢樺凹鏂?, text = "浣犱互涓轰綘鑳介樆姝㈡垜鍚楋紵"}
+    {speaker = "阿尔萨斯", text = "终于找到你了！"},
+    {speaker = "梅尔甘尼斯", text = "你以为你能阻止我吗？"}
 }, function()
-    -- 瀵硅瘽缁撴潫鍚庡紑濮婤oss鎴?    local boss = BossFight.New(bossConfig)
+    -- 对话结束后开始Boss战
+    local boss = BossFight.New(bossConfig)
     boss:Init()
 end)
 ```
 
-### 4.3 涓庝换鍔＄郴缁熼泦鎴?
+### 4.3 与任务系统集成
+
 ```lua
 local Quest = require("src.systems.wcc-quest")
 local Dialogue = require("src.systems.wcc-dialogue")
 
--- 鎺ヤ换鍔℃椂鐨勫璇?Dialogue.Play({
-    {speaker = "鏉戞皯", text = "鍕囧＋锛岃甯府鎴戜滑锛?},
-    {speaker = "闃垮皵钀ㄦ柉", text = "鍙戠敓浜嗕粈涔堜簨锛?},
-    {speaker = "鏉戞皯", text = "鎴戜滑鐨勬潙搴勮浜＄伒鏀诲嚮浜嗭紒"}
+-- 接任务时的对话
+Dialogue.Play({
+    {speaker = "村民", text = "勇士，请帮帮我们！"},
+    {speaker = "阿尔萨斯", text = "发生了什么事？"},
+    {speaker = "村民", text = "我们的村庄被亡灵攻击了！"}
 }, function()
-    -- 瀵硅瘽缁撴潫鍚庡垱寤轰换鍔?    Quest.Create({
-        title = "鎷晳鏉戝簞",
-        description = "娑堢伃鏀诲嚮鏉戝簞鐨勪骸鐏?,
+    -- 对话结束后创建任务
+    Quest.Create({
+        title = "拯救村庄",
+        description = "消灭攻击村庄的亡灵",
         type = "main"
     })
 end)
@@ -409,26 +436,26 @@ end)
 
 ---
 
-## 5. 楂樼骇鍔熻兘 (Advanced Features)
+## 5. 高级功能 (Advanced Features)
 
-### 5.1 鏉′欢鍒嗘敮
+### 5.1 条件分支
 
 ```lua
 local dialogueWithBranch = {
     {
-        speaker = "绁炵浜?,
-        text = "浣犳兂瑕佸摢鏉¤矾锛?,
+        speaker = "神秘人",
+        text = "你想要哪条路？",
         choices = {
             {
-                text = "宸﹁竟鐨勮矾",
+                text = "左边的路",
                 action = function()
-                    -- 閫夋嫨宸﹁竟鐨勮矾
+                    -- 选择左边的路
                 end
             },
             {
-                text = "鍙宠竟鐨勮矾",
+                text = "右边的路",
                 action = function()
-                    -- 閫夋嫨鍙宠竟鐨勮矾
+                    -- 选择右边的路
                 end
             }
         }
@@ -436,32 +463,32 @@ local dialogueWithBranch = {
 }
 ```
 
-### 5.2 澶氳瑷€鏀寔
+### 5.2 多语言支持
 
 ```lua
 local dialogueMultiLang = {
     {
-        speaker = "闃垮皵钀ㄦ柉",
+        speaker = "阿尔萨斯",
         text = {
-            zhCN = "鎴戜滑鍒颁簡锛屾柉鍧︽仼甯冭幈寰枫€?,
+            zhCN = "我们到了，斯坦恩布莱德。",
             enUS = "We've arrived, Strahnbrad."
         }
     }
 }
 
--- 浣跨敤鏃舵牴鎹瑷€閫夋嫨鏂囨湰
+-- 使用时根据语言选择文本
 local function GetLocalizedText(textTable)
     local lang = GetLocale()
     return textTable[lang] or textTable["enUS"]
 end
 ```
 
-### 5.3 闀滃ご鍔ㄧ敾搴忓垪
+### 5.3 镜头动画序列
 
 ```lua
 local cameraSequence = {
     {
-        -- 璧峰闀滃ご
+        -- 起始镜头
         x = 0,
         y = 0,
         distance = 3000,
@@ -469,14 +496,15 @@ local cameraSequence = {
         duration = 0
     },
     {
-        -- 绉诲姩鍒扮洰鏍?        x = 1000,
+        -- 移动到目标
+        x = 1000,
         y = 2000,
         distance = 1650,
         angle = 30,
         duration = 3.0
     },
     {
-        -- 鎷夎繎
+        -- 拉近
         x = 1000,
         y = 2000,
         distance = 800,
@@ -488,56 +516,65 @@ local cameraSequence = {
 
 ---
 
-## 6. 鏈€浣冲疄璺?(Best Practices)
+## 6. 最佳实践 (Best Practices)
 
-### 6.1 瀵硅瘽璁捐
+### 6.1 对话设计
 
-- 姣忓彞瀵硅瘽淇濇寔绠€娲侊紙涓嶈秴杩?0涓瓧锛?- 璇磋瘽鑰呭悕瀛椾娇鐢ㄩ鑹插尯鍒?- 閲嶈瀵硅瘽浣跨敤鐢靛奖妯″紡
+- 每句对话保持简洁（不超过20个字）
+- 说话者名字使用颜色区分
+- 重要对话使用电影模式
 
-### 6.2 闀滃ご鎺у埗
+### 6.2 镜头控制
 
-- 闀滃ご绉诲姩瑕佸钩婊?- 閬垮厤杩囦簬棰戠箒鐨勯暅澶村垏鎹?- 缁欑帺瀹惰冻澶熺殑鏃堕棿闃呰
+- 镜头移动要平滑
+- 避免过于频繁的镜头切换
+- 给玩家足够的时间阅读
 
-### 6.3 鎬ц兘浼樺寲
+### 6.3 性能优化
 
-- 鍙婃椂閿€姣佽Е鍙戝櫒鍜岃鏃跺櫒
-- 閬垮厤鍦ㄥ璇濅腑鍒涘缓澶ч噺鐗规晥
-- 浣跨敤瀵硅薄姹犵鐞嗛绻佸垱寤虹殑瀵硅薄
+- 及时销毁触发器和计时器
+- 避免在对话中创建大量特效
+- 使用对象池管理频繁创建的对象
 
 ---
 
-## 7. 甯歌闂 (FAQ)
+## 7. 常见问题 (FAQ)
 
-### Q: 瀵硅瘽涓嶆樉绀烘€庝箞鍔烇紵
+### Q: 对话不显示怎么办？
 
-A: 妫€鏌ユ槸鍚︽纭垵濮嬪寲锛?```lua
+A: 检查是否正确初始化：
+```lua
 Dialogue.Init()
 ```
 
-### Q: 濡備綍璺宠繃瀵硅瘽锛?
-A: 鎸塃SC閿垨璋冪敤锛?```lua
+### Q: 如何跳过对话？
+
+A: 按ESC键或调用：
+```lua
 Dialogue.Skip()
 ```
 
-### Q: 闀滃ご涓嶇Щ鍔紵
+### Q: 镜头不移动？
 
-A: 妫€鏌ラ暅澶撮厤缃槸鍚︽纭細
+A: 检查镜头配置是否正确：
 ```lua
 camera = {
-    x = 1000,      -- X鍧愭爣
-    y = 2000,      -- Y鍧愭爣
-    distance = 1650, -- 闀滃ご璺濈
-    angle = 30,    -- 淇瑙?    duration = 2.0 -- 杩囨浮鏃堕棿
+    x = 1000,      -- X坐标
+    y = 2000,      -- Y坐标
+    distance = 1650, -- 镜头距离
+    angle = 30,    -- 俯视角
+    duration = 2.0 -- 过渡时间
 }
 ```
 
 ---
 
-## 8. 鎵╁睍闃呰 (Further Reading)
+## 8. 扩展阅读 (Further Reading)
 
-- [Boss鎴樻ā寮廬(task-boss-fight.md) - Boss鎴樼郴缁?- [浠诲姟绯荤粺](../wcc-skill/patterns/task-quest.md) - 浠诲姟杩借釜绯荤粺
-- [璁℃椂鍣ㄧ鐞哴(../wcc-lib/wcc-timer.lua) - 璁℃椂鍣ㄥ畨鍏ㄥ皝瑁?
+- [Boss战模式](task-boss-fight.md) - Boss战系统
+- [任务系统](../wcc-skill/patterns/task-quest.md) - 任务追踪系统
+- [计时器管理](../wcc-lib/wcc-timer.lua) - 计时器安全封装
+
 ---
 
-*鏈枃妗ｇ敱 WCC 椤圭洰缁存姢锛屾渶鍚庢洿鏂? 2026-07-09*
-
+*本文档由 WCC 项目维护，最后更新: 2026-07-09*

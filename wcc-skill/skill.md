@@ -42,7 +42,7 @@
 CreateUnit(...)
 CreateTimer(...)
 CreateGroup(...)
-Location(...)  -- 未配对销毁
+CreateLocation(...)
 
 -- ✅ 必须使用安全封装
 WCC.SafeCreateUnit(...)
@@ -100,7 +100,6 @@ local loc = Location(x, y)
 │   │   ├── wcc-core.lua       # 安全沙箱
 │   │   ├── wcc-logger.lua     # 日志系统
 │   │   ├── wcc-timer.lua      # 计时器管理
-│   │   ├── wcc-objects.lua    # 批量物编/单位注册与创建
 │   │   ├── wcc-dialogue.lua   # 对话系统
 │   │   ├── wcc-quest.lua      # 任务系统
 │   │   └── wcc-gc.lua         # 内存清理器
@@ -112,14 +111,6 @@ local loc = Location(x, y)
 │       └── chapter_02.lua     # 第二章
 └── scripts/                   # 构建脚本（可选）
 ```
-
----
-
-## 3.5 数据驱动与批量物编
-
-- 表格/重复结构用 codegen 模板生成，再 `write_file` + `lua_check`（见 `patterns/task-data-codegen.md`）。
-- 批量单位/物品用 `wcc-objects`，参考 `patterns/task-object-batch.md`。
-- 禁止让 AI 重复手写 20 段几乎相同的 CreateUnit。
 
 ---
 

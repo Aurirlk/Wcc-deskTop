@@ -1,236 +1,234 @@
 --[[
     Warcraft Campaign Craft (WCC) - Dialogue System
-    对话与过场：电影模式、镜头、打字机、跳过。
-
-    修复 (v1.0.1):
-    - MoveCamera 使用共享 Location 复用，禁止每次新建泄漏
-    - 不在模块加载时缓存 GetLocalPlayer；跳过/推进用全玩家同步事件，避免本地状态 desync
-    - 中文打字机按 UTF-8 字符步进（不是按字节）
+    对话与过场系统，支持多句台词、电影模式、镜头控制、跳过功能。
+    
+    功能:
+    - 多句台词按顺序播放
+    - 电影模式开关
+    - 镜头平滑移动
+    - 跳过功能
+    
+    作者: 艾泽拉斯织码者
+    版本: 1.0.0
 ]]
+
 local Core = require("src.lib.wcc-core")
-local Timer = require("src.lib.wcc-timer")
 
 local WCC_Dialogue = {}
-WCC_Dialogue.VERSION = "1.0.1"
+
+-- 版本号
+WCC_Dialogue.VERSION = "1.0.0"
+
+-- ==========================================
+-- 状态管理
+-- ==========================================
 
 local state = {
     isPlaying = false,
     currentSequence = nil,
     currentIndex = 0,
     skipRequested = false,
-    skipTrig = nil,
-    advanceTrig = nil,
-    typewriterTimer = nil,
+    player = GetLocalPlayer(),
+    skipTrig = nil
 }
 
+-- 配置
 local config = {
-    textSpeed = 0.05,
-    autoAdvance = false,
-    autoAdvanceDelay = 3.0,
-    cameraTransition = 2.0,
-    fadeTime = 1.0,
-    useLocalDisplay = true, -- 仅显示用；逻辑状态仍全同步
+    textSpeed = 0.05,       -- 每个字符显示时间
+    autoAdvance = false,    -- 自动推进
+    autoAdvanceDelay = 3.0, -- 自动推进延迟
+    cameraTransition = 2.0, -- 镜头过渡时间
+    fadeTime = 1.0          -- 淡入淡出时间
 }
 
--- 共享镜头 Location（复用，避免泄漏）
-local camLoc = nil
+-- ==========================================
+-- 初始化
+-- ==========================================
 
-local function ensureCamLoc(x, y)
-    if camLoc == nil then
-        camLoc = Core.SafeCreateLocation(x or 0, y or 0)
-    else
-        MoveLocation(camLoc, x or 0, y or 0)
-    end
-    return camLoc
-end
-
-local function localDisplay(msg, duration)
-    if config.useLocalDisplay then
-        DisplayTimedTextToPlayer(GetLocalPlayer(), 0, 0, duration or 10.0, msg)
-    else
-        DisplayTextToForce(GetPlayersAll(), msg)
-    end
-end
-
---- UTF-8 字符切片：按码点而非字节
-local function utf8Chars(s)
-    local t = {}
-    local i = 1
-    local n = #s
-    while i <= n do
-        local c = s:byte(i)
-        local len = 1
-        if c >= 0xF0 then len = 4
-        elseif c >= 0xE0 then len = 3
-        elseif c >= 0xC0 then len = 2
-        end
-        if i + len - 1 > n then len = 1 end
-        t[#t + 1] = s:sub(i, i + len - 1)
-        i = i + len
-    end
-    return t
-end
-
+--- 初始化对话系统
 function WCC_Dialogue.Init()
-    camLoc = Core.SafeCreateLocation(0, 0)
+    Core.Log("对话系统初始化")
     WCC_Dialogue.RegisterSkipEvent()
-    WCC_Dialogue.RegisterAdvanceEvent()
-    Core.Log("对话系统 v" .. WCC_Dialogue.VERSION .. " 初始化")
 end
 
+-- ==========================================
+-- 核心功能
+-- ==========================================
+
+--- 播放对话序列
+--- @param sequence table 对话序列
+--- @param callback function 完成回调
 function WCC_Dialogue.Play(sequence, callback)
     if state.isPlaying then
         Core.LogWarning("对话正在播放中")
         return
     end
+    
     if not sequence or #sequence == 0 then
         Core.LogWarning("对话序列为空")
         if callback then callback() end
         return
     end
-
+    
     state.isPlaying = true
     state.currentSequence = sequence
     state.currentIndex = 0
     state.skipRequested = false
-    if camLoc == nil then camLoc = Core.SafeCreateLocation(0, 0) end
-
+    
+    -- 进入电影模式
     WCC_Dialogue.EnterCinematicMode()
+    
+    -- 播放第一句
     WCC_Dialogue.PlayNext(callback)
 end
 
+--- 播放下一句
+--- @param callback function 完成回调
 function WCC_Dialogue.PlayNext(callback)
     state.currentIndex = state.currentIndex + 1
-
+    
     if state.currentIndex > #state.currentSequence then
+        -- 对话结束
         WCC_Dialogue.End(callback)
         return
     end
-
+    
     local line = state.currentSequence[state.currentIndex]
+    
+    -- 设置镜头
     if line.camera then
         WCC_Dialogue.MoveCamera(line.camera)
     end
-
+    
+    -- 显示对话
     WCC_Dialogue.ShowLine(line, function()
-        if state.skipRequested then return end
+        if state.skipRequested then
+            return
+        end
+        
+        -- 等待玩家输入或自动推进
         if config.autoAdvance then
-            Timer.SetTimeout(config.autoAdvanceDelay, function()
+            WCC_Dialogue.CreateTimer(config.autoAdvanceDelay, function()
                 WCC_Dialogue.PlayNext(callback)
             end)
         else
-            -- 等待全玩家同步的「继续」事件（非仅本地鼠标）
+            WCC_Dialogue.WaitForInput(callback)
         end
     end)
 end
 
+--- 显示一行对话
+--- @param line table 对话行
+--- @param callback function 完成回调
 function WCC_Dialogue.ShowLine(line, callback)
     local speaker = line.speaker or ""
     local text = line.text or ""
-
+    
+    -- 显示说话者名字
     if speaker ~= "" then
-        localDisplay("|cffffcc00" .. speaker .. "|r", 999)
+        DisplayTimedTextToPlayer(state.player, 0, 0, 999, "|cffffcc00" .. speaker .. "|r")
     end
-
+    
+    -- 逐字显示文本
     WCC_Dialogue.TypewriterEffect(text, function()
-        if state.skipRequested then return end
-        localDisplay("|cff888888[按 ESC 跳过 / 点击继续]|r", 999)
-        state._lineDoneCallback = callback
-        if config.autoAdvance and callback then
-            Timer.SetTimeout(config.autoAdvanceDelay, function()
-                if state._lineDoneCallback == callback then
-                    state._lineDoneCallback = nil
-                    callback()
-                end
-            end)
+        if state.skipRequested then
+            return
+        end
+        
+        -- 显示继续提示
+        DisplayTimedTextToPlayer(state.player, 0, 0, 999, "|cff888888[点击继续]|r")
+        
+        if callback then
+            callback()
         end
     end)
 end
 
+--- 打字机效果
+--- @param text string 文本
+--- @param callback function 完成回调
 function WCC_Dialogue.TypewriterEffect(text, callback)
     if state.skipRequested then
-        localDisplay(text, 999)
+        DisplayTimedTextToPlayer(state.player, 0, 0, 999, text)
         if callback then callback() end
         return
     end
-
-    local chars = utf8Chars(text)
-    local count = #chars
+    
+    local displayed = ""
     local index = 0
-
-    if state.typewriterTimer then
-        Timer.Clear(state.typewriterTimer)
-        state.typewriterTimer = nil
-    end
-
-    state.typewriterTimer = Timer.SetInterval(config.textSpeed, function()
+    local length = string.len(text)
+    
+    local timer = CreateTimer()
+    TimerStart(timer, config.textSpeed, true, function()
         if state.skipRequested then
-            localDisplay(text, 999)
-            state.typewriterTimer = nil
+            DestroyTimer(timer)
+            DisplayTimedTextToPlayer(state.player, 0, 0, 999, text)
             if callback then callback() end
-            return true
+            return
         end
-
+        
         index = index + 1
-        if index > count then
-            state.typewriterTimer = nil
+        if index > length then
+            DestroyTimer(timer)
             if callback then callback() end
-            return true
+            return
         end
-
-        local shown = ""
-        for i = 1, index do
-            shown = shown .. chars[i]
-        end
-        localDisplay(shown, 999)
-        return false
+        
+        displayed = displayed .. string.sub(text, index, index)
+        DisplayTimedTextToPlayer(state.player, 0, 0, 999, displayed)
     end)
 end
 
---- 推进（全玩家事件，避免本地鼠标推进共享状态导致 desync）
-function WCC_Dialogue.Advance()
-    if not state.isPlaying then return end
-    if state._lineDoneCallback then
-        local cb = state._lineDoneCallback
-        state._lineDoneCallback = nil
-        cb()
+--- 等待玩家输入
+--- @param callback function 回调
+function WCC_Dialogue.WaitForInput(callback)
+    if state.skipRequested then
+        if callback then callback() end
         return
     end
-    -- 若打字机未完成则跳过整段
-    WCC_Dialogue.Skip()
-end
-
-function WCC_Dialogue.RegisterAdvanceEvent()
-    if state.advanceTrig then return end
-    state.advanceTrig = CreateTrigger()
+    
+    local trig = CreateTrigger()
+    
+    -- 注册鼠标点击事件
     for i = 0, 15 do
-        -- 全玩家同步的任意聊天/按键类推进：用 ESC（End Cinematic）统一
-        TriggerRegisterPlayerEvent(state.advanceTrig, Player(i), EVENT_PLAYER_END_CINEMATIC)
+        TriggerRegisterPlayerEvent(trig, Player(i), EVENT_PLAYER_MOUSE_DOWN)
     end
-    TriggerAddAction(state.advanceTrig, function()
-        if state.isPlaying then
-            WCC_Dialogue.Advance()
+    
+    TriggerAddAction(trig, function()
+        DestroyTrigger(trig)
+        if callback and not state.skipRequested then
+            callback()
         end
     end)
 end
 
+-- ==========================================
+-- 电影模式控制
+-- ==========================================
+
+--- 进入电影模式
 function WCC_Dialogue.EnterCinematicMode()
     CinematicModeBJ(true, GetPlayersAll())
     ShowInterface(false, 0)
-    CinematicFadeBJ(bj_CINEFADETYPE_FADEIN, config.fadeTime,
+    CinematicFadeBJ(bj_CINEFADETYPE_FADEIN, config.fadeTime, 
         "ReplaceableTextures\\CameraMasks\\White_mask.tga", 0, 0, 0, 0)
 end
 
+--- 退出电影模式
 function WCC_Dialogue.ExitCinematicMode()
-    CinematicFadeBJ(bj_CINEFADETYPE_FADEOUT, config.fadeTime,
+    CinematicFadeBJ(bj_CINEFADETYPE_FADEOUT, config.fadeTime, 
         "ReplaceableTextures\\CameraMasks\\White_mask.tga", 0, 0, 0, 0)
-    Timer.SetTimeout(config.fadeTime, function()
+    
+    local timer = CreateTimer()
+    TimerStart(timer, config.fadeTime, false, function()
         ShowInterface(true, 0)
         CinematicModeBJ(false, GetPlayersAll())
+        DestroyTimer(timer)
     end)
 end
 
---- 镜头：对全玩家生效；Location 复用 camLoc
+--- 移动镜头
+--- @param camera table 镜头配置
 function WCC_Dialogue.MoveCamera(camera)
     local x = camera.x or 0
     local y = camera.y or 0
@@ -239,27 +237,26 @@ function WCC_Dialogue.MoveCamera(camera)
     local rotation = camera.rotation or 0
     local fov = camera.fov or 70
     local duration = camera.duration or config.cameraTransition
-
-    local loc = ensureCamLoc(x, y)
-    PanCameraToTimedLocForPlayer(GetLocalPlayer(), loc, duration)
-    -- 注意：多人需各玩家自算；战役单人可对 local 仅镜头
-    for i = 0, 15 do
-        local p = Player(i)
-        if GetPlayerSlotState(p) == PLAYER_SLOT_STATE_PLAYING then
-            SetCameraFieldForPlayer(p, CAMERA_FIELD_TARGET_DISTANCE, distance, duration)
-            SetCameraFieldForPlayer(p, CAMERA_FIELD_ANGLE_OF_ATTACK, angle, duration)
-            SetCameraFieldForPlayer(p, CAMERA_FIELD_ROTATION, rotation, duration)
-            SetCameraFieldForPlayer(p, CAMERA_FIELD_FIELD_OF_VIEW, fov, duration)
-        end
-    end
+    
+    PanCameraToTimedLocForPlayer(state.player, Location(x, y), duration)
+    SetCameraFieldForPlayer(state.player, CAMERA_FIELD_TARGET_DISTANCE, distance, duration)
+    SetCameraFieldForPlayer(state.player, CAMERA_FIELD_ANGLE_OF_ATTACK, angle, duration)
+    SetCameraFieldForPlayer(state.player, CAMERA_FIELD_ROTATION, rotation, duration)
+    SetCameraFieldForPlayer(state.player, CAMERA_FIELD_FIELD_OF_VIEW, fov, duration)
 end
 
+-- ==========================================
+-- 跳过功能
+-- ==========================================
+
+--- 注册跳过事件
 function WCC_Dialogue.RegisterSkipEvent()
-    if state.skipTrig then return end
     state.skipTrig = CreateTrigger()
+    
     for i = 0, 15 do
         TriggerRegisterPlayerEvent(state.skipTrig, Player(i), EVENT_PLAYER_END_CINEMATIC)
     end
+    
     TriggerAddAction(state.skipTrig, function()
         if state.isPlaying then
             state.skipRequested = true
@@ -268,63 +265,79 @@ function WCC_Dialogue.RegisterSkipEvent()
     end)
 end
 
+--- 跳过对话
 function WCC_Dialogue.Skip()
-    if not state.isPlaying then return end
-    Core.Log("跳过对话")
-    state.skipRequested = true
-    if state.typewriterTimer then
-        Timer.Clear(state.typewriterTimer)
-        state.typewriterTimer = nil
+    if not state.isPlaying then
+        return
     end
+    
+    Core.Log("跳过对话")
+    
+    -- 快速显示所有剩余文本
     for i = state.currentIndex, #state.currentSequence do
         local line = state.currentSequence[i]
-        localDisplay("|cffffcc00" .. (line.speaker or "") .. "|r\n" .. (line.text or ""), 10)
+        DisplayTimedTextToPlayer(state.player, 0, 0, 10, 
+            "|cffffcc00" .. (line.speaker or "") .. "|r\n" .. (line.text or ""))
     end
+    
+    -- 结束对话
     WCC_Dialogue.End()
 end
 
+-- ==========================================
+-- 结束对话
+-- ==========================================
+
+--- 结束对话
+--- @param callback function 完成回调
 function WCC_Dialogue.End(callback)
     state.isPlaying = false
     state.currentSequence = nil
     state.currentIndex = 0
     state.skipRequested = false
-    state._lineDoneCallback = nil
-    if state.typewriterTimer then
-        Timer.Clear(state.typewriterTimer)
-        state.typewriterTimer = nil
-    end
+    
     WCC_Dialogue.ExitCinematicMode()
+    
     Core.Log("对话结束")
+    
     if callback then
-        Timer.SetTimeout(config.fadeTime + 0.1, function()
+        local timer = CreateTimer()
+        TimerStart(timer, config.fadeTime + 0.1, false, function()
+            DestroyTimer(timer)
             callback()
         end)
     end
 end
 
+-- ==========================================
+-- 工具函数
+-- ==========================================
+
+--- 获取播放状态
+--- @return boolean 是否正在播放
 function WCC_Dialogue.IsPlaying()
     return state.isPlaying
 end
 
+--- 设置配置
+--- @param newConfig table 新配置
 function WCC_Dialogue.SetConfig(newConfig)
     for k, v in pairs(newConfig) do
         config[k] = v
     end
 end
 
-function WCC_Dialogue.Destroy()
-    if state.skipTrig then
-        DestroyTrigger(state.skipTrig)
-        state.skipTrig = nil
-    end
-    if state.advanceTrig then
-        DestroyTrigger(state.advanceTrig)
-        state.advanceTrig = nil
-    end
-    if camLoc then
-        Core.SafeRemoveLocation(camLoc)
-        camLoc = nil
-    end
+--- 创建安全计时器
+--- @param timeout number 超时时间
+--- @param callback function 回调
+function WCC_Dialogue.CreateTimer(timeout, callback)
+    local timer = CreateTimer()
+    TimerStart(timer, timeout, false, function()
+        DestroyTimer(timer)
+        if callback and not state.skipRequested then
+            callback()
+        end
+    end)
 end
 
 return WCC_Dialogue

@@ -164,7 +164,7 @@ end
 --- 清除技能计时器
 function BossFight:ClearSkillTimers()
     for _, timer in ipairs(self.skillTimers) do
-        Timer.Clear(timer)
+        Timer.ClearTimer(timer)
     end
     self.skillTimers = {}
 end
@@ -278,7 +278,7 @@ local bossConfig = {
             onEnter = function(self)
                 Core.Log("Boss进入狂暴状态！")
                 -- 增加攻击力
-                BlzSetUnitBaseDamage(self.boss, 100, 0)
+                SetUnitAttackDamage(self.boss, 100)
             end,
             skills = {
                 {
