@@ -1,5 +1,7 @@
 # WCC 2.0 产品计划（对标 AI_novelsTool_obsdian 桌面形态）
 
+> **⚠️ 版本快照（2026-11-10 标注）**：本文是历史阶段产物，**不作为当前开发进度或排期依据**。当前主线与下一步排期见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)；裁决顺序为「代码事实 > 最新主线文档 > 历史文档」。文末的「Do Now / 立即执行」类章节均已过期。
+
 > 参考：`D:\Program Files\AI_novelsTool_obsdian`（PyQt6 网文写作桌面，多 Agent + 记忆 + MCP + 工作台）  
 > 本仓库对照物：`PROJECT-PLAN.md` v1.1 MVP（Electron + Sidecar + forge 转发 + 流式）  
 > 日期：2026-09-15
@@ -160,6 +162,8 @@ Sidecar
 ---
 
 ## 8. 立即执行顺序（本周）
+> **⚠️ 已过期（2026-11-10）**：本节是撰写当时的排期，**不执行**。最新优先级以 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) 为准：P0 基线固化 → P1 harness 接入 → P2 进图 → P3 打包；Forge 真机联调与 electron 打包均已后移，不再列为 P0 第一/本周事项。
+
 
 1. 设置 + `/config` 持久化  
 2. 首页三步引导  

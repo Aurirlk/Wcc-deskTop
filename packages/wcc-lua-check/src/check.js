@@ -162,12 +162,26 @@ export function checkPaths(paths) {
     issues.push(...checkSource(f, src));
   }
   const errors = issues.filter((i) => i.severity === "error");
-  return { files: files.length, issues, ok: errors.length === 0 };
+  const warnings = issues.filter((i) => i.severity !== "error");
+  // `ok` deliberately means "no errors" (warnings are review prompts, not
+  // blockers) so the existing corpus is not broken. But both counts are
+  // exposed so `ok=true` can never be misread as "zero findings".
+  return {
+    files: files.length,
+    issues,
+    ok: errors.length === 0,
+    errors: errors.length,
+    warnings: warnings.length,
+  };
 }
 
 export function formatReport(report, cwd = process.cwd()) {
+  const errors = report.errors ?? report.issues.filter((i) => i.severity === "error").length;
+  const warnings = report.warnings ?? report.issues.filter((i) => i.severity !== "error").length;
   const lines = [
-    `wcc-lua-check: ${report.files} files, ${report.issues.length} issues, ok=${report.ok}`,
+    `wcc-lua-check: ${report.files} files, ${report.issues.length} issues ` +
+    `(${errors} errors, ${warnings} warnings), ok=${report.ok}` +
+    (report.ok && warnings ? "  [no errors; warnings are review prompts]" : ""),
   ];
   for (const i of report.issues) {
     const rel = path.relative(cwd, i.file).replace(/\\/g, "/");

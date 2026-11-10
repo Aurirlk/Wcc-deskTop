@@ -20,7 +20,9 @@ import {
   SCRIPT_MANIFEST, findScript, runScript, probeForge,
   renderStatic, diffPreview, clip, displayWidth, createTui,
   createHarness,
+  defaultGateRunner,
 } from "../src/index.js";
+import { checkPaths as checkLuaPaths, formatReport as formatLuaReport } from "../../packages/wcc-lua-check/src/check.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -154,6 +156,77 @@ test("hooks: .lua write fires the real WCC checker; non-lua is skipped", async (
   assert.equal(md.results[0].result.skipped, true);
   assert.ok(EVENTS.includes("task.complete"));
   assert.ok(Object.keys(bus.list()).length >= 3);
+});
+
+test("AGENTS.md is a single, always-on repo contract (no duplicated iron rules)", (t) => {
+  const agents = path.join(ROOT, "AGENTS.md");
+  assert.equal(fs.existsSync(agents), true, "repo-root AGENTS.md must exist");
+  const docs = collectSteering({ skillRoot: SKILL, agentsFile: agents });
+  const a = docs.find((d) => d.rel === "AGENTS.md");
+  assert.ok(a, "steering must see AGENTS.md");
+  assert.equal(a.mode, "always");
+  assert.ok(a.priority >= 100);
+  const sel = selectSteering({ docs, context: { files: [], intent: "", maxChars: 20000 } });
+  assert.ok(sel.selectedIds.includes(a.id), "always-on doc must be selected even with no context");
+  const body = fs.readFileSync(agents, "utf8");
+  assert.match(body, /wcc-skill\/skill\.md/);
+  assert.match(body, /不复述编程铁律全文|不复制/);
+  assert.doesNotMatch(body, /^### 2\.1 语言强制/m, "must not copy the iron rules verbatim");
+});
+
+test("lua-check: errors and warnings are counted separately; warnings never fail ok", (t) => {
+  const d = tmp(t);
+  fs.writeFileSync(path.join(d, "clean.lua"), "local x = 1\nreturn x\n", "utf8");
+  fs.writeFileSync(path.join(d, "warn.lua"), "local l = Location(0, 0)\n", "utf8");
+  fs.writeFileSync(path.join(d, "err.lua"), "Wait(1)\n", "utf8");
+  const clean = checkLuaPaths([path.join(d, "clean.lua")]);
+  assert.equal(clean.ok, true);
+  assert.equal(clean.errors, 0);
+  assert.equal(clean.warnings, 0);
+  const warn = checkLuaPaths([path.join(d, "warn.lua")]);
+  assert.equal(warn.ok, true, "warnings must not break the existing corpus");
+  assert.equal(warn.errors, 0);
+  assert.ok(warn.warnings >= 1);
+  const err = checkLuaPaths([path.join(d, "err.lua")]);
+  assert.equal(err.ok, false);
+  assert.ok(err.errors >= 1);
+  const text = formatLuaReport(warn, d);
+  assert.match(text, /0 errors, 1 warnings|0 errors, \d+ warnings/);
+  assert.match(text, /review prompts/);
+});
+
+test("hooks: task.complete gate actually executes and blocks on errors", async (t) => {
+  const d = tmp(t);
+  const bus = createHookBus();
+  installDefaultHooks(bus, { projectRoot: d, gateOnTaskComplete: true });
+  const okGate = await bus.emit("task.complete", { taskId: "T1", run: true });
+  assert.equal(okGate.results[0].result.executed, true);
+  assert.equal(okGate.results[0].result.skipped, undefined);
+  assert.equal(okGate.results[0].result.verdict, "allow");
+
+  const failingGate = defaultGateRunner(d, { targets: ["bad"] });
+  fs.mkdirSync(path.join(d, "bad"), { recursive: true });
+  fs.writeFileSync(path.join(d, "bad", "x.lua"), "Wait(1)\n", "utf8");
+  assert.equal((await failingGate()).ok, false);
+
+  const badBus = createHookBus();
+  installDefaultHooks(badBus, { projectRoot: d, gateOnTaskComplete: true, runGate: failingGate });
+  const blocked = await badBus.emit("task.complete", { taskId: "T2", run: true });
+  assert.equal(blocked.results[0].result.verdict, "block");
+  assert.equal(blocked.blocking, true);
+});
+
+test("hooks: file.write blocks on errors but allows warning-only files", async (t) => {
+  const d = tmp(t);
+  const bus = createHookBus();
+  installDefaultHooks(bus, { projectRoot: d, blockOnIssues: true });
+  fs.writeFileSync(path.join(d, "bad.lua"), "Wait(1)\n", "utf8");
+  fs.writeFileSync(path.join(d, "warn.lua"), "local l = Location(0, 0)\n", "utf8");
+  const bad = await bus.emit("file.write", { path: "bad.lua" });
+  const warn = await bus.emit("file.write", { path: "warn.lua" });
+  assert.equal(bad.results[0].result.verdict, "block");
+  assert.equal(warn.results[0].result.verdict, "allow");
+  assert.ok(warn.results[0].result.warnings >= 1);
 });
 
 test("tool injection: always-on core, conditional groups, cap, expert filter", () => {

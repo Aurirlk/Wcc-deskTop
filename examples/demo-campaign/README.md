@@ -18,12 +18,17 @@
 
 ```
 demo-campaign/
-├── demo-campaign.w3x        # 魔兽地图文件
 ├── src/
 │   ├── main.lua             # 主入口文件
 │   └── chapter_01.lua       # 第一章逻辑
+├── tables-sample.json       # 示例数据表
 └── README.md                # 本文件
 ```
+
+> ⚠️ **本目录不含 `.w3x` 地图文件**。当前 `build_map` 只产出可导入的
+> `dist/build/war3map.lua` 脚本包（+ `src-tree/`），写入二进制 `.w3x` 尚未实现；
+> 详见 [docs/MAP-COMPILE-PIPELINE.md](../../docs/MAP-COMPILE-PIPELINE.md) §7 与
+> [docs/MAP-GENERATION-PLAN.md](../../docs/MAP-GENERATION-PLAN.md) §2.6 虚标清单。
 
 ---
 

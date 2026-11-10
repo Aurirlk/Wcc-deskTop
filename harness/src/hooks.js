@@ -18,9 +18,41 @@ export const EVENTS = [
 export function defaultCheckRunner(projectRoot) {
   return function runCheck(target) {
     const abs = path.isAbsolute(target) ? target : path.resolve(projectRoot, target);
-    if (!fs.existsSync(abs)) return { ok: false, issues: 1, report: `target not found: ${abs}` };
+    if (!fs.existsSync(abs)) return { ok: false, issues: 1, errors: 1, warnings: 0, report: `target not found: ${abs}` };
     const report = checkPaths([abs]);
-    return { ok: report.ok, issues: report.issues?.length ?? 0, report: formatReport(report, projectRoot) };
+    return {
+      ok: report.ok,
+      issues: report.issues?.length ?? 0,
+      errors: report.errors,
+      warnings: report.warnings,
+      report: formatReport(report, projectRoot),
+    };
+  };
+}
+
+/**
+ * Default `task.complete` gate: actually run the checker over the project's Lua
+ * sources instead of merely listing a plan. Missing targets are reported as
+ * skipped (never silently "passed"), and warnings do not block.
+ */
+export function defaultGateRunner(projectRoot, {
+  targets = ["examples/demo-campaign/src", "wcc-lib"],
+} = {}) {
+  return async function runGate() {
+    const root = projectRoot || process.cwd();
+    const paths = targets.map((t) => path.resolve(root, t)).filter((p) => fs.existsSync(p));
+    if (!paths.length) {
+      return { ok: true, skipped: true, errors: 0, warnings: 0, issues: [], report: "no lua targets found; gate skipped" };
+    }
+    const report = checkPaths(paths);
+    return {
+      ok: report.ok,
+      skipped: false,
+      errors: report.errors,
+      warnings: report.warnings,
+      issues: report.issues,
+      report: formatReport(report, root),
+    };
   };
 }
 
@@ -66,8 +98,14 @@ export function createHookBus({ logger = () => {}, strict = false } = {}) {
 }
 
 /** Install the built-in gates. `runCheck` / `runGate` are injectable for tests. */
-export function installDefaultHooks(bus, { projectRoot, runCheck, runGate, blockOnIssues = false } = {}) {
-  const check = runCheck || defaultCheckRunner(projectRoot || process.cwd());
+export function installDefaultHooks(bus, {
+  projectRoot, runCheck, runGate,
+  blockOnIssues = true,
+  gateOnTaskComplete = true,
+} = {}) {
+  const root = projectRoot || process.cwd();
+  const check = runCheck || defaultCheckRunner(root);
+  const gate = runGate || defaultGateRunner(root);
   const registered = [];
 
   registered.push(bus.on("file.write", async ({ path: rel }) => {
@@ -80,7 +118,10 @@ export function installDefaultHooks(bus, { projectRoot, runCheck, runGate, block
       target: rel,
       ok: r.ok,
       issues: r.issues,
+      errors: r.errors ?? (r.ok ? 0 : r.issues),
+      warnings: r.warnings ?? 0,
       report: r.report,
+      // Only errors block; warnings are review prompts.
       verdict: !r.ok && blockOnIssues ? "block" : "allow",
     };
   }, { name: "lua-check-on-write", priority: 100 }));
@@ -88,9 +129,15 @@ export function installDefaultHooks(bus, { projectRoot, runCheck, runGate, block
   registered.push(bus.on("task.complete", async ({ taskId, run = false }) => {
     const plan = ["node packages/wcc-lua-check/src/cli.js examples/demo-campaign/src wcc-lib", "npm test"];
     const out = { gate: "quality-gate", taskId, plan, executed: false };
-    if (run && runGate) {
+    if (run !== false && gateOnTaskComplete) {
       out.executed = true;
-      out.result = await runGate(taskId);
+      out.result = await gate(taskId);
+      // Errors block; warnings are review prompts and never block.
+      out.verdict = out.result?.ok === false ? "block" : "allow";
+      out.blocking = out.verdict === "block";
+    } else {
+      out.skipped = true;
+      out.reason = "gateOnTaskComplete=false";
     }
     return out;
   }, { name: "quality-gate-on-task", priority: 50 }));

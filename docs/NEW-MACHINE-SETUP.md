@@ -1,7 +1,8 @@
 # 换机迁移清单（Clone → 可开发 → 可验证）
 
-> 2026-11-10 · 因开发机更换而编写。目的是让**新机器拉下仓库就能恢复到今天的研究状态**，而不是靠人记忆补环境。当前主仓库是 **Gitee 私有仓库**（项目为半成品，刻意不公开），GitHub 尚未同步，见 §1。
+> 2026-11-10 · 因开发机更换而编写。目的是让**新机器拉下仓库就能恢复到今天的研究状态**，而不是靠人记忆补环境。**2026-11-10 二次校正：GitHub 与 Gitee 已完成同步，三处 `main` 一致**（见 §1）；下文表格中"GitHub 未同步"的历史记录已一并更正。
 > 本文件是操作清单，不是完成声明；涉及本机实测的数据均标注来源，未在新机器验证的步骤标 🟠。
+> **最新 HEAD 与远端状态一律以 `git log -1` / `git ls-remote` 为准**，本文件不跟踪具体 commit。开发主线见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)。
 
 ---
 
@@ -16,14 +17,17 @@
 
 | 项 | 值 | 备注 |
 |---|---|---|
-| **当前主仓库（Gitee）** | `https://gitee.com/wei-kaijie/Wcc-deskTop.git` | ✅ 2026-11-10 建仓并推送成功；**私有**（项目为半成品，刻意不公开）、`main`；远端 HEAD 与本地一致、tree 161 条目 |
-| GitHub 官方仓库 | `https://github.com/Aurirlk/Wcc-deskTop.git` | 🔴 **仍停在 `12b9169`**：`git push` 因代理 502 + 无凭据失败，本次成果未同步 |
-| 本地 `origin` | `https://github.com/Aurirlk/Wcc-deskTop.git` | 已从失效镜像切到官方地址 |
+| **Gitee 主仓库** | `https://gitee.com/wei-kaijie/Wcc-deskTop.git` | ✅ 2026-11-10 建仓并推送成功；**私有**（项目为半成品，刻意不公开）、`main` |
+| GitHub 官方仓库 | `https://github.com/Aurirlk/Wcc-deskTop.git` | ✅ **已同步**：当日晚间完成三处合并，GitHub 不再停在 `12b9169` |
+| 本地 `origin` | `https://github.com/Aurirlk/Wcc-deskTop.git` | 从失效镜像切到官方地址；本地分支已由 `master` 重命名为 `main` 并跟踪 `origin/main` |
 | 本地 `gitee` | `https://gitee.com/wei-kaijie/Wcc-deskTop.git` | 干净 URL，**不含任何凭据**；推送令牌只走一次性 URL |
-| 旧镜像 remote | `https://gitclone.com/github.com/Aurirlk/Wcc-deskTop.git` | 🔴 2026-11-10 实测 502 已失效，且只读不能 push |
-| 基线 commit | `12b9169` — `feat: WCC desktop AI harness monorepo (v1.2)` | 推送前本地与 GitHub 远端一致 |
-| 本次成果提交 | `7fe0922`..`83ced5f`（6 个） | ✅ 已在 Gitee `main` 上 |
+| 旧镜像 remote | `https://gitclone.com/github.com/Aurirlk/Wcc-deskTop.git` | 🔴 2026-11-10 实测 502 已失效，且只读不能 push（历史记录） |
+| 历史基线 commit | `12b9169` — `feat: WCC desktop AI harness monorepo (v1.2)` | 合并前的共同祖先，**不是当前 HEAD** |
+| Gitee 侧成果提交 | `7fe0922`..`ef5a9be`（7 个） | ✅ 含 `harness/` 零依赖层、9 篇 docs、`wcc-skill` front matter、`vendor/` |
+| 三处同步合并提交 | `d8ccdfb` | ✅ 当日合并结果；此后继续开发，**最新 HEAD 以 `git log -1` 为准** |
 | 作者身份 | `WCC Dev <wcc-dev@users.noreply.github.com>` | 沿用原提交（noreply 形式，不含个人邮箱） |
+
+> 两个 remote 都已配置，`origin` = GitHub、`gitee` = Gitee。推两端时用 `git push origin main` 和 `git push gitee main`（本地分支名为 `main`，远端分支也为 `main`）。
 
 仓库是**私有**的，匿名 `git clone` / API 会返回 404 或 401。新机器请用一次性带令牌的 URL clone，然后立刻把凭据从配置里去掉：
 
@@ -36,8 +40,8 @@ git log -6 --oneline          # 应能看到 docs / harness / scripts 相关提�
 
 🟠 更省事、且不依赖任何云端认证的恢复方式：直接带走 `D:\净土\WCC-2026-11-10-research.bundle` / `.patch` / `.zip` 三份离线归档（见 §3），在新机器 `git clone <bundle>` 或解压即可。
 
-> 🔴 **不要用 GitHub 地址 clone 后以为拿到了最新成果**：GitHub 此刻仍是 `12b9169`。
-> 若之后恢复了 GitHub push 权限，记得把 Gitee 上的 6 个提交补推过去，两边再保持一致。
+> ✅ **GitHub 与 Gitee 现已同步，两个地址 clone 都能拿到同一份最新成果**（Gitee 为私有仓库，需要凭据；GitHub 公开）。
+> 换机后建议 `git clone` 任意一个，然后用 `git log -1` 核对 HEAD，再用 `git remote -v` 确认两个远端。凭据只走一次性 URL，clone 后立刻 `git remote set-url` 去掉令牌。
 
 ---
 

@@ -2,7 +2,8 @@
 
 > 魔兽争霸3战役 · **桌面 AI Harness**（WorkBuddy 式）· Lua 1.31+
 >
-> 当前主同步目标：**Gitee 私有仓库** <https://gitee.com/wei-kaijie/Wcc-deskTop>（项目仍是半成品，刻意不公开）；GitHub <https://github.com/Aurirlk/Wcc-deskTop> 截至 2026-11-10 仍停在 `12b9169`（push 受阻未同步）。换机、凭据与归档见 [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) §1。
+> **三处已同步**：本地 `main`、GitHub <https://github.com/Aurirlk/Wcc-deskTop>、Gitee **私有**仓库 <https://gitee.com/wei-kaijie/Wcc-deskTop>（项目仍是半成品，刻意不公开）。2026-11-10 以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，三处 `main` 均已对齐；GitHub **不再**停在 `12b9169`。
+> 开发主线与下一步排期见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)；换机、凭据与归档见 [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) §1。最新 HEAD 一律以 `git log -1` 为准。
 
 > 🎮 让 AI 成为你的魔兽争霸3战役开发搭档
 
@@ -35,8 +36,9 @@ WCC 是一个基于 LLM（大型语言模型）和 Lua 的《魔兽争霸3》战
 ### 安装步骤
 
 ```bash
-# 1. 克隆新仓库
+# 1. 克隆仓库（GitHub 与 Gitee 三处已同步，任选其一）
 git clone https://github.com/Aurirlk/Wcc-deskTop.git
+# 或：git clone https://gitee.com/wei-kaijie/Wcc-deskTop.git   # 私有仓库，需凭据
 cd Wcc-deskTop
 
 # 2. 将 wcc-lib 复制到你的地图项目
@@ -147,6 +149,9 @@ AI会自动生成符合WCC规范的代码！
 
 ## 文档
 
+- [AGENTS.md](AGENTS.md) — **仓库级 Agent 契约**：唯一入口指针、工程约定、红线（规范权威仍是 `wcc-skill/skill.md`）
+- [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) — **下一步开发计划（唯一排期依据）**：现状基线、P0→P3、第 0 号决策
+- [docs/P0-DISPOSITIONS.md](docs/P0-DISPOSITIONS.md) — P0 悬空项处置结论（`@wcc/shared` 冻结 / `wcc-hotreload` 环境限制）
 - [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) — **换机迁移清单**：clone → 依赖 → 回归验证，不入库的本地配置、必须单独带走的数据、目标补丁决策  
 - [docs/DEPLOYMENT-SHORTCUTS.md](docs/DEPLOYMENT-SHORTCUTS.md) — **部署快捷方式建议**：本机桌面实测、换机失效原因、三层入口模型、最小快捷方式集、`scripts/create-shortcuts.py` 用法与红线  
 - [docs/MAP-GENERATION-PLAN.md](docs/MAP-GENERATION-PLAN.md) — **地图生成与优化计划**：拼图/借鉴/随机/素材库四路线、人物摆放与触发器的代码凭据、Python+Lua+WE 外部支持、Warcraft 3 MCP Server、统一 IR 架构  

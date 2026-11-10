@@ -1,6 +1,7 @@
 # 地图生成与优化计划（WCC 最难的一块）
 
-> **2026-11-10 仓库状态补记**：本文「未 git commit / 未推送 / origin=gitclone.com」均为**撰写当时**状态。当天成果已全部提交（`7fe0922`..`83ced5f`，6 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开；`main` 与本地一致）；GitHub `Aurirlk/Wcc-deskTop` 仍停在 `12b9169`（push 受阻未同步）。权威说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
+> **2026-11-10 仓库状态补记（当日二次校正）**：本文撰写时「未 git commit / 未推送 / origin=gitclone.com」均为当时状态；当天成果已全部提交（`7fe0922`..`ef5a9be`，7 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开）。**当日稍后已完成三处同步**：以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，本地 `main`、GitHub `Aurirlk/Wcc-deskTop`、Gitee `wei-kaijie/Wcc-deskTop` 的 `main` 均已对齐（合并提交 `d8ccdfb`）；GitHub **不再**停在 `12b9169`。
+> 此后仓库持续开发，**最新 HEAD 一律以 `git log -1` / `git ls-remote` 为准，本文不再跟踪具体 commit**；开发主线与排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，换机说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
 > 2026-11-09 夜 · 新增文档，回应「直接让 AI 铺地图不可取」的四条替代路线
 > 覆盖：① 拼图流 ② 借鉴流 ③ 随机生成流 ④ 素材库流 ⑤ **代码凭据核查：AI 到底有没有实现人物摆放 / 触发器 / 战役剧情** ⑥ 本机 Python + Lua + 原版 WE 的外部支持 ⑦ Warcraft 3 MCP Server 是什么 ⑧ 统一架构与优先级。

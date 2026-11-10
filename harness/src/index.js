@@ -37,6 +37,7 @@ export * from "./tui.js";
 export function createHarness({
   projectRoot = process.cwd(),
   skillRoot = null,
+  agentsFile = null,
   config = {},
   catalog = [],
   steeringBudget = 12000,
@@ -49,9 +50,15 @@ export function createHarness({
 } = {}) {
   const root = path.resolve(projectRoot);
   const resolvedSkillRoot = path.resolve(skillRoot || path.join(root, "wcc-skill"));
+  // Repo-level AGENTS.md is the shared contract for every harness. Opt-in/out
+  // via agentsFile; default picks it up when present. It is a pointer, not a
+  // second copy of the iron rules (see AGENTS.md §1).
+  const resolvedAgentsFile = agentsFile === null
+    ? (fs.existsSync(path.join(root, "AGENTS.md")) ? path.join(root, "AGENTS.md") : null)
+    : agentsFile;
   const spec = createSpecStore({ projectRoot: root });
   const scratch = createScratch({ projectRoot: root });
-  const steering = createSteering({ skillRoot: resolvedSkillRoot, maxChars: steeringBudget });
+  const steering = createSteering({ skillRoot: resolvedSkillRoot, maxChars: steeringBudget, agentsFile: resolvedAgentsFile });
   const hooks = createHookBus({ strict: strictHooks });
   const budget = createBudget({ maxTurns, maxTokens });
   const provider = resolveProvider(config);
@@ -109,7 +116,8 @@ export function createHarness({
         case "spec_init": return { ok: true, output: JSON.stringify(spec.init(args.goal || "未命名战役任务", { force: Boolean(args.force) }), null, 2) };
         case "spec_done": {
           const r = spec.setTask(args.id, true);
-          if (r.ok) await hooks.emit("task.complete", { taskId: args.id, run: false });
+          // P0-5: the quality gate now really runs instead of only listing a plan.
+          if (r.ok) await hooks.emit("task.complete", { taskId: args.id, run: true });
           return { ok: r.ok, output: JSON.stringify(r, null, 2) };
         }
         case "scratch_grep": return { ok: true, output: JSON.stringify(scratch.grep(args.pattern || ".", { maxHits: Number(args.maxHits) || 40 }), null, 2) };

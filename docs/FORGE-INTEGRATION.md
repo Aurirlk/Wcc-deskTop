@@ -1,6 +1,7 @@
 # WCC 如何融入 wc3-forge 生态（查证结论与行动方案）
 
-> **2026-11-10 仓库状态补记**：本文「未 git commit / 未推送 / origin=gitclone.com」均为**撰写当时**状态。当天成果已全部提交（`7fe0922`..`83ced5f`，6 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开；`main` 与本地一致）；GitHub `Aurirlk/Wcc-deskTop` 仍停在 `12b9169`（push 受阻未同步）。权威说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
+> **2026-11-10 仓库状态补记（当日二次校正）**：本文撰写时「未 git commit / 未推送 / origin=gitclone.com」均为当时状态；当天成果已全部提交（`7fe0922`..`ef5a9be`，7 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开）。**当日稍后已完成三处同步**：以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，本地 `main`、GitHub `Aurirlk/Wcc-deskTop`、Gitee `wei-kaijie/Wcc-deskTop` 的 `main` 均已对齐（合并提交 `d8ccdfb`）；GitHub **不再**停在 `12b9169`。
+> 此后仓库持续开发，**最新 HEAD 一律以 `git log -1` / `git ls-remote` 为准，本文不再跟踪具体 commit**；开发主线与排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，换机说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
 > 查证日期：2026-11-09 · 依据 GitHub API / README / CLAUDE.md / CREDITS.md / LICENSE 实测
 > 目标对象：`StephenSHorton/wc3-forge` v1.0.7

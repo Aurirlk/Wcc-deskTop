@@ -67,7 +67,6 @@ function rewriteRequires(code, mapName) {
 
 export function bundleCampaign({ projectRoot, entry = "src.main", outDir }) {
   const dist = outDir || path.join(projectRoot, "dist", "build");
-  fs.mkdirSync(dist, { recursive: true });
 
   const wccLibDir = [
     path.join(projectRoot, "wcc-lib"),
@@ -77,6 +76,19 @@ export function bundleCampaign({ projectRoot, entry = "src.main", outDir }) {
 
   const mods = collectModules(projectRoot, entry, wccLibDir);
   const missing = [...mods.entries()].filter(([, v]) => v.missing).map(([k]) => k);
+
+  // Fail fast: a bundle with unresolved requires would boot into
+  // `__wcc_require(...): module not found` at runtime. Never emit a partial
+  // war3map.lua and report success (see docs/NEXT-DEVELOPMENT-PLAN.md N1).
+  if (missing.length) {
+    throw new Error(
+      `[WCC build] unresolved modules, no artifact written: ${missing.join(", ")}. ` +
+      `entry=${entry} projectRoot=${projectRoot}. ` +
+      `Add the missing .lua files or fix the require() graph before building.`
+    );
+  }
+
+  fs.mkdirSync(dist, { recursive: true });
 
   // Topological-ish: emit deps first via simple multiple passes
   const emitted = new Set();
@@ -161,7 +173,10 @@ end
 
 WE：打开地图 → 脚本编辑器 → 替换为 \`war3map.lua\` 全文。
 
-完整 MPQ 写入需要 mpyq/stormlib/WE；本构建产出可导入脚本包。
+⚠️ \`src-tree/\` 里的 \`wcc-lib/wcc-hotreload.lua\` 依赖原生 require，
+WC3 目标环境不可用，**不要导入 WE**；详见仓库 \`docs/P0-DISPOSITIONS.md\` N6。
+
+完整 MPQ 写入需要 mpyq/stormlib/WE；本构建产出可导入脚本包，**不产出 \`.w3x\`**。
 `;
   fs.writeFileSync(path.join(dist, "README.md"), readme, "utf8");
 

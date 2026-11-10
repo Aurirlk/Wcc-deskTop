@@ -117,10 +117,18 @@ function listMarkdown(root) {
   return out.sort();
 }
 
-export function collectSteering({ skillRoot }) {
+/**
+ * `agentsFile` is an optional repo-root AGENTS.md. It is intentionally opt-in:
+ * the skill tree stays the single source of programming rules, while the repo
+ * contract (pointer + engineering conventions) can be injected as `always`.
+ */
+export function collectSteering({ skillRoot, agentsFile = null }) {
   const root = path.resolve(skillRoot);
-  return listMarkdown(root).map((abs) => {
-    const rel = path.relative(root, abs).replace(/\\/g, "/");
+  const files = listMarkdown(root);
+  if (agentsFile && fs.existsSync(agentsFile)) files.push(path.resolve(agentsFile));
+  return files.map((abs) => {
+    let rel = path.relative(root, abs).replace(/\\/g, "/");
+    if (rel.startsWith("..")) rel = path.basename(abs);
     const text = fs.readFileSync(abs, "utf8");
     const { meta, body, hasFrontMatter } = parseFrontMatter(text);
     const rule = DEFAULT_RULES[rel] || {};
@@ -236,11 +244,11 @@ export function renderSteering(selection) {
 }
 
 /** One-shot helper used by the CLI + TUI. */
-export function createSteering({ skillRoot, maxChars = 12000 }) {
-  let docs = collectSteering({ skillRoot });
+export function createSteering({ skillRoot, maxChars = 12000, agentsFile = null }) {
+  let docs = collectSteering({ skillRoot, agentsFile });
   const select = (context = {}) => selectSteering({ docs, context: { maxChars, ...context } });
   const reload = () => {
-    docs = collectSteering({ skillRoot });
+    docs = collectSteering({ skillRoot, agentsFile });
     return docs;
   };
   return { get docs() { return docs; }, select, render: renderSteering, reload };

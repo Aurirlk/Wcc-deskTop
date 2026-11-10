@@ -1,5 +1,7 @@
 # WCC 完整项目计划（Warcraft Campaign Craft）
 
+> **⚠️ 版本快照（2026-11-10 标注）**：本文是历史阶段产物，**不作为当前开发进度或排期依据**。当前主线与下一步排期见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)；裁决顺序为「代码事实 > 最新主线文档 > 历史文档」。文末的「Do Now / 立即执行」类章节均已过期。
+
 > 版本：**v1.2 · 对齐 3.0 调研**  
 > 外部审计：`WCC-深度调研与优化方案-3.0.md`（Qwen workspace，2026-09-15）  
 > 选型约束：前端/UI 用 **TypeScript**；侧车/业务可用 **Python / Rust**；游戏脚本 **Lua**
@@ -405,6 +407,8 @@ while session alive:
 ---
 
 ## 十、立即可执行清单（Do Now）
+> **⚠️ 已过期（2026-11-10）**：本节是撰写当时的排期，**不执行**。最新优先级以 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) 为准：P0 基线固化 → P1 harness 接入 → P2 进图 → P3 打包；Forge 真机联调与 electron 打包均已后移，不再列为 P0 第一/本周事项。
+
 
 1. 合并 `wcc-lib`；根目录 `wcc-core.lua` 删除。  
 2. `.novel-workflow` → `attic/`。  

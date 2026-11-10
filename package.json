@@ -11,7 +11,8 @@
     "dev:desktop": "npm run dev -w @wcc/desktop",
     "build:desktop": "npm run build -w @wcc/desktop",
     "check": "node packages/wcc-lua-check/src/cli.js examples/demo-campaign/src wcc-lib",
-    "test": "npm run test -w @wcc/sidecar && npm run test -w @wcc/lua-check",
+    "test:harness": "node --test harness/test/harness.test.js",
+    "test": "npm run test -w @wcc/sidecar && npm run test -w @wcc/lua-check && npm run test -w @wcc/shared && npm run test:harness",
     "sidecar": "node packages/wcc-sidecar/src/server.js",
     "postinstall": "node scripts/optional-electron.js"
   },

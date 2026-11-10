@@ -23,6 +23,10 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(HERE, "..", "..");
 const SKILL = path.join(ROOT, "wcc-skill");
+// Repo-level contract shared by every harness. It is a pointer, not a copy of
+// the iron rules (see AGENTS.md §1). Pass it explicitly so even a temp
+// projectRoot (e.g. `demo`) reads the same file.
+const AGENTS = fs.existsSync(path.join(ROOT, "AGENTS.md")) ? path.join(ROOT, "AGENTS.md") : null;
 
 const {
   createHarness, createSteering, selectSteering, renderSteering,
@@ -49,7 +53,7 @@ const out = (x) => console.log(typeof x === "string" ? x : JSON.stringify(x, nul
 const hr = (title) => `\n=== ${title} ===`;
 
 const root = () => (has("--root") ? path.resolve(val("--root")) : ROOT);
-const mk = (opts = {}) => createHarness({ projectRoot: root(), skillRoot: SKILL, ...opts });
+const mk = (opts = {}) => createHarness({ projectRoot: root(), skillRoot: SKILL, agentsFile: AGENTS, ...opts });
 
 switch (cmd) {
   case "help":
@@ -58,7 +62,7 @@ switch (cmd) {
     break;
 
   case "steer": {
-    const steering = createSteering({ skillRoot: SKILL, maxChars: Number(val("--max", "12000")) });
+    const steering = createSteering({ skillRoot: SKILL, agentsFile: AGENTS, maxChars: Number(val("--max", "12000")) });
     const files = val("--files", "").split(",").filter(Boolean);
     const sel = steering.select({
       intent: val("--intent", ""),
@@ -84,7 +88,7 @@ switch (cmd) {
   case "steering": {
     const sub = (rest[0] || "list").toLowerCase();
     if (sub === "list") {
-      out(collectSteering({ skillRoot: SKILL }).map((d) => ({ id: d.id, rel: d.rel, mode: d.mode, fileMatch: d.fileMatch, keywords: d.keywords, hasFrontMatter: d.hasFrontMatter, chars: d.chars })));
+      out(collectSteering({ skillRoot: SKILL, agentsFile: AGENTS }).map((d) => ({ id: d.id, rel: d.rel, mode: d.mode, fileMatch: d.fileMatch, keywords: d.keywords, hasFrontMatter: d.hasFrontMatter, chars: d.chars })));
     } else if (sub === "annotate") {
       const h = mk();
       out({ ...h.annotateSteering({ write: has("--write") }), note: has("--write") ? "已写入 front matter" : "dry-run：未写文件（加 --write 才写）" });
@@ -186,7 +190,7 @@ switch (cmd) {
     // Fully offline: temp project root, real skill docs, real lua checker.
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "wcc-harness-demo-"));
     try {
-      const h = createHarness({ projectRoot: tmp, skillRoot: SKILL, steeringBudget: 8000, maxTools: 10 });
+      const h = createHarness({ projectRoot: tmp, skillRoot: SKILL, agentsFile: AGENTS, steeringBudget: 8000, maxTools: 10 });
       const s1 = h.steering.select({ intent: "写一个 boss 战，需要对话和阶段机", files: ["src/map/chapter_01.lua"] });
       const s2 = h.steering.select({ intent: "随便看看", files: [] });
       const spec = h.spec.init("demo：第一章清剿营地");

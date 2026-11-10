@@ -1,6 +1,7 @@
 # WCC 独立 Harness + 二分 PR 方案 · 可行性分析
 
-> **2026-11-10 仓库状态补记**：本文「未 git commit / 未推送 / origin=gitclone.com」均为**撰写当时**状态。当天成果已全部提交（`7fe0922`..`83ced5f`，6 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开；`main` 与本地一致）；GitHub `Aurirlk/Wcc-deskTop` 仍停在 `12b9169`（push 受阻未同步）。权威说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
+> **2026-11-10 仓库状态补记（当日二次校正）**：本文撰写时「未 git commit / 未推送 / origin=gitclone.com」均为当时状态；当天成果已全部提交（`7fe0922`..`ef5a9be`，7 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开）。**当日稍后已完成三处同步**：以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，本地 `main`、GitHub `Aurirlk/Wcc-deskTop`、Gitee `wei-kaijie/Wcc-deskTop` 的 `main` 均已对齐（合并提交 `d8ccdfb`）；GitHub **不再**停在 `12b9169`。
+> 此后仓库持续开发，**最新 HEAD 一律以 `git log -1` / `git ls-remote` 为准，本文不再跟踪具体 commit**；开发主线与排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，换机说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
 > 2026-11-09 · 针对「WCC 继续做点击即用的独立 harness；代码二分，只把优化部分提 PR；wc3-forge 增强 MCP」这一方案的核查与评估。
 > 本文是**当时的分析快照**：写作时未改动任何项目代码、未提交 git、未发送任何外部 Issue/PR。

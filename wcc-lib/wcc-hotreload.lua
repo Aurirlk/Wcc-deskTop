@@ -1,8 +1,15 @@
 --[[
     模块名称: wcc-hotreload
     功能描述: 开发期模块热重载（h-lua 风格思路）：清缓存 + 重新 require
-    警告: 仅调试用；线上战役不要 Init
     版本: 0.1.0
+
+    ⚠️ 目标环境限制（2026-11-10 核查，见 docs/P0-DISPOSITIONS.md N6）：
+    本模块依赖 package.loaded 与原生 require，而 WC3 原生 Lua 没有 require
+    （build-map.js 用自造 __wcc_require 内联依赖）。因此在真机上 Init()
+    会走降级分支返回 false，模块实际不可达。
+    - 不要在任何战役入口 require 本模块；线上战役禁止 Init。
+    - 本文件仅作为「开发期热重载思路」的历史记录保留，不纳入战役分发。
+    - build_map 的 src-tree/ 源码副本会包含它，仅供阅读，勿导入 WE。
 ]]
 local Core = require("src.lib.wcc-core")
 

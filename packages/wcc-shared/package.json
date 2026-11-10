@@ -6,8 +6,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.js"
   },
+  "description": "Frozen types-only placeholder. NOT built, NOT imported. See docs/P0-DISPOSITIONS.md N5.",
   "devDependencies": {
     "typescript": "^5.6.0"
   }
