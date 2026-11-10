@@ -134,8 +134,12 @@ node harness/bin/wcc-harness.mjs demo
 node harness/bin/wcc-harness.mjs tui --static
 ```
 
-> `harness/` 目前是**可独立运行的旁路层**，尚未接入 `agent.js` / `server.js`；
-> 已实现什么、未实现什么、如何接入，见 [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md)。
+> ✅ **2026-11-10 P1 已接入**：`harness/` 不再是旁路层——`createHarness()` 已接进
+> `packages/wcc-sidecar/src/agent.js`（steering 条件注入、工具按需注入、budget 停止条件、
+> scratch 卸载、hooks 质量门禁与报错回喂），并由 `server.js` 暴露 `/harness/*` 供桌面与 TUI 共用同一实例。
+> 它仍保持**零 npm 依赖、不进 npm workspaces**，上面的 CLI 命令依旧可独立运行。
+> 实现细节见 [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md)，
+> P1 验收记录见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) §11。
 
 模型（可选，Sidecar 环境变量）：
 

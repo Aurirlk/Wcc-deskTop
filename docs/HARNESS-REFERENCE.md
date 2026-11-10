@@ -9,7 +9,9 @@
 > [`docs/HARNESS-IMPLEMENTATION.md`](HARNESS-IMPLEMENTATION.md) —— 新增零依赖 `harness/` 层、
 > 15 项自测通过、8 份 skill 文档新增 steering front matter；仍未接入 `agent.js` / 打包 / 提 PR。
 > 本文第 1–2、4–6 节的分析与判断继续有效。
-> 配套阅读：`docs/FEASIBILITY-REVIEW.md`（方案可行性）、`docs/FORGE-INTEGRATION.md`（forge 生态）。
+> 配套阅读：`docs/FEASIBILITY-REVIEW.md`
+> **⚠️ P1 状态更新（2026-11-10）**：上面「仍未接入 `agent.js`」已过期——harness 已接入主 Agent Loop，见 [HARNESS-IMPLEMENTATION.md](HARNESS-IMPLEMENTATION.md) 文首与 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) §11。仍未做的是 electron 打包、真 forge 联调与提 PR；本文第 1–2、4–6 节的分析继续有效。
+（方案可行性）、`docs/FORGE-INTEGRATION.md`（forge 生态）。
 
 ---
 

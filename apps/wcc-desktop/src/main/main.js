@@ -252,6 +252,14 @@ ipcMain.handle("wcc:config-set", async (_e, patch) =>
   })
 );
 ipcMain.handle("wcc:experts", async () => sidecarFetch("/experts"));
+ipcMain.handle("wcc:providers", async () => sidecarFetch("/harness/providers"));
+ipcMain.handle("wcc:harness-state", async () => sidecarFetch("/harness/state"));
+ipcMain.handle("wcc:harness-steering", async (_e, intent, files) =>
+  sidecarFetch(
+    `/harness/steering?intent=${encodeURIComponent(intent || "")}` +
+      `&files=${encodeURIComponent((files || []).join(","))}`
+  )
+);
 ipcMain.handle("wcc:workbench-tree", async () => sidecarFetch("/workbench/tree"));
 ipcMain.handle("wcc:workbench-bible", async () => sidecarFetch("/workbench/bible"));
 ipcMain.handle("wcc:workbench-bible-set", async (_e, patch) =>

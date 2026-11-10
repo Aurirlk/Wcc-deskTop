@@ -45,8 +45,11 @@ maxChars: 2600
 
 ## 3. 现状速记（2026-11-10，以代码为准）
 
-- `harness/` 是可独立运行的层，P1 正在把它接入 `packages/wcc-sidecar/src/agent.js`；
-  接入前 `agent.js` 仍是全量注入，不要把 harness 的能力当作"已在产品生效"。
+- ✅ **P1 已接入**：`createHarness()` 已接进 `packages/wcc-sidecar/src/agent.js`
+  （steering 条件注入 / injector 按需工具 / budget 停止条件 / scratch 卸载 /
+  hooks 门禁与报错回喂），`server.js` 暴露 `/harness/*` 并共用同一实例。
+  它仍零 npm 依赖、不进 workspaces，CLI 可独立运行。
+  未完成的是 P2 进图、P3 打包分发（见 `docs/NEXT-DEVELOPMENT-PLAN.md` §11）。
 - `build_map` 只产 `dist/build/war3map.lua` 脚本包，**不产 `.w3x`**；仓库零 `.w3x`。
 - 本机 Electron 二进制缺失，`dev:desktop` 起不来；sidecar / check / harness 不依赖它。
 - 本机 War3 1.26 只支持 JASS，`war3map.lua` 不能在本机试玩。目标补丁决策见

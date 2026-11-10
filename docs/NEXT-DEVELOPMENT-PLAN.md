@@ -44,7 +44,7 @@
 
 | 文件 | 作用 |
 |---|---|
-| `README.md` | 项目定位、模块结构、当前文档索引；`L135-136` 明确 harness 是旁路层 |
+| `README.md` | 项目定位、模块结构、当前文档索引；P1 后 `harness/` 已接入 `agent.js`，不再是旁路层 |
 | `docs/HARNESS-IMPLEMENTATION.md` | **实现记录（不是规划稿）**；`§7 L259-271` 是全项目唯一未被推翻的下一步清单 |
 | `docs/MAP-COMPILE-PIPELINE.md` | **`§5.3 / §11` 第 0 号决策（目标补丁）**；`§7` 两阶段 P0 验收 |
 | `docs/MAP-GENERATION-PLAN.md` | `§7 L436-443` P0/P1/P2 与验收标准；`§8-10` 红线 |
@@ -259,6 +259,28 @@
 **回归基线**：`npm test` 49/49 · `npm run check` 0 errors · `harness demo` EXIT=0 · `git diff` 无未解冲突。
 
 > 注：用户要求保留的 4 个非 `(2)` 未跟踪项（`wcc-core.lua`、`.omo/`、`.novel-workflow/`、`项目状态与改进报告.md`）**未纳入提交**，保持未跟踪原样。
+
+---
+
+## 11. 执行记录：P1 已完成（2026-11-10）
+
+> P1 目标达成：**`harness/` 不再是旁路层**，`createHarness()` 已接入主产品。
+
+| 任务 | 落地 | 验证 |
+|---|---|---|
+| P1-1 接入 `createHarness()` | 重写 `packages/wcc-sidecar/src/agent.js`：`steering` 条件注入替代 skill.md 前 2000 字全量；`injector` 按需工具替代 `tools.list()` 全量；**每轮新建** `createBudget` 替代 `guard<8`（避免共享 budget 8 轮后耗尽）；`scratch.wrapToolResult` 替代 `slice(0,50_000)`；`summarizeHistory` + `patchToolCalls` 每轮修复历史；harness 自有工具路由到 `harness.dispatch()` | `npm test` 57/57；E2E 断言 `harnessState().wired=true`、`savedChars>0`、`tools.selected<=14`、`budget.turns>=1` |
+| P1-2 保留离线降级 | 无 key 时 `callModel` 仍走 `offlinePlan()`，`modelConfig()` 改用 `resolveProvider`（兼容 ollama 免 key） | E2E「offline path preserved」断言只发 delta/done、零 tool_start |
+| P1-3 mock model E2E | `test/harness-e2e.test.js`：本地 SSE 假模型驱动完整链路 | 3 项 → 4 项 E2E 全绿；断言门禁反馈**出现在第二次模型请求**里（不是摆设） |
+| P1-4 `/harness/*` 端点 | `server.js` 创建**单个** harness 实例传给 agent 并暴露 `state / providers / steering / tools / spec / hooks / scratch / dispatch`；`/health` 增加 `harnessWired`；preload + main.js + renderer 接通 | 实机 HTTP：`harnessWired:true`、7 层、`AGENTS.md` 命中、`/harness/tools` 省 2590 字符、`spec_status` 正确返回 |
+| P1-5 provider 下拉 | `index.html` 加 `#cfg-provider`；`/config` POST 用 `providerPatch` 自动填 baseUrl/model（显式值优先）；`configStore.save` 清空 env 镜像；修掉空字符串覆盖预设的坑 | 实机 POST `provider=qwen` → `dashscope.../compatible-mode/v1` + `qwen-plus`；4 项配置单测 + 3 次重复运行稳定 |
+| P1-6 质量门禁回喂 | `agent.js`：写 `.lua` 后触发 `file.write` hook，block 时把报告注入下一轮消息；`lua_check` 报 error 同样回灌一次 | E2E 两条独立用例分别覆盖「写坏文件被 gate 拦」与「lua_check 失败回喂」，均断言第二次请求含 `[WCC 质量门禁]` |
+| 文档同步 | README 撤掉「旁路层未接入」；`HARNESS-IMPLEMENTATION.md` / `HARNESS-REFERENCE.md` 加 P1 状态注记（保留原文快照）；`AGENTS.md` §3 更新 | 全仓 `grep 旁路层/尚未接入` 无活跃错误声明 |
+
+**回归基线**：`npm test` = **57/57 pass**（sidecar 35 + lua-check 2 + shared 1 + harness 19）·
+`npm run check` 0 errors / 3 warnings · `harness demo` EXIT=0 · 4 个保留未跟踪项仍未入库。
+
+**仍未做（不要写成已完成）**：P2 文本 IR 与 `.w3x` 两阶段验收、P3 electron 打包与真 forge 联调、
+P4 外部生态；第 0 号目标补丁决策**仍未拍板**，P2 依旧被它阻塞。
 
 ---
 

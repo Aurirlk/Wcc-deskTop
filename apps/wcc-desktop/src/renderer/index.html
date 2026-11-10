@@ -236,6 +236,10 @@
       <section id="view-settings" class="view">
         <div class="panel">
           <h3 class="panel-h">模型（OpenAI 兼容）</h3>
+          <label class="field">模型供应商
+            <select id="cfg-provider" class="select"></select>
+          </label>
+          <p class="hint" id="cfg-provider-note">选择预设会自动填入 Base URL 与模型名；自定义端点可手动覆盖。</p>
           <label class="field">Base URL <input id="cfg-base" class="input" placeholder="https://api.deepseek.com/v1" /></label>
           <label class="field">API Key <input id="cfg-key" class="input" type="password" placeholder="sk-..." /></label>
           <label class="field">模型名 <input id="cfg-model" class="input" placeholder="deepseek-chat" /></label>

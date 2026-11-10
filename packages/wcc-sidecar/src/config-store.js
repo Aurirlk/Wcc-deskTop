@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const DEFAULTS = {
+  provider: "deepseek",
   baseUrl: "",
   apiKey: "",
   model: "deepseek-chat",
@@ -47,10 +48,14 @@ export function createConfigStore({ projectRoot }) {
     cache = { ...cache, ...patch };
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(file, JSON.stringify(cache, null, 2), "utf8");
-    // also apply to process.env for agent
+    // Mirror to process.env for headless callers. Clearing a field must also
+    // clear the env var, otherwise switching providers leaves a stale value.
     if (cache.baseUrl) process.env.WCC_MODEL_BASE_URL = cache.baseUrl;
+    else delete process.env.WCC_MODEL_BASE_URL;
     if (cache.apiKey) process.env.WCC_MODEL_API_KEY = cache.apiKey;
+    else delete process.env.WCC_MODEL_API_KEY;
     if (cache.model) process.env.WCC_MODEL_NAME = cache.model;
+    else delete process.env.WCC_MODEL_NAME;
     if (cache.autoApprove) process.env.WCC_AUTO_APPROVE = "1";
     else delete process.env.WCC_AUTO_APPROVE;
     return get();

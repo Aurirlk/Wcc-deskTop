@@ -335,27 +335,53 @@ $("#btn-onb-start")?.addEventListener("click", async () => {
 $("#btn-build")?.addEventListener("click", runBuild);
 
 async function loadConfigAndExperts() {
-  const [cfg, experts] = await Promise.all([window.wcc.configGet(), window.wcc.experts()]);
-  const fill = (sel, list, selected) => {
+  const [cfg, experts, providers] = await Promise.all([
+    window.wcc.configGet(),
+    window.wcc.experts(),
+    window.wcc.providers ? window.wcc.providers() : Promise.resolve([]),
+  ]);
+  const fill = (sel, list, selected, labelOf) => {
     const el = $(sel);
     if (!el) return;
     el.innerHTML = "";
     for (const e of list) {
       const opt = document.createElement("option");
       opt.value = e.id;
-      opt.textContent = e.name;
+      opt.textContent = labelOf ? labelOf(e) : e.name;
       if (e.id === selected) opt.selected = true;
       el.appendChild(opt);
     }
   };
   fill("#expert-select", experts, cfg.expert);
   fill("#cfg-expert", experts, cfg.expert);
+  fill("#cfg-provider", providers, cfg.provider || "deepseek", (p) => `${p.label}${p.local ? "（本机）" : ""}`);
+  const noteEl = $("#cfg-provider-note");
+  if (noteEl && providers.length) {
+    const cur = providers.find((p) => p.id === (cfg.provider || "deepseek"));
+    if (cur) noteEl.textContent = `${cur.note || ""} 选择预设会自动填入 Base URL 与模型名；自定义端点可手动覆盖。`;
+  }
   if ($("#cfg-base")) $("#cfg-base").value = cfg.baseUrl || "";
   if ($("#cfg-model")) $("#cfg-model").value = cfg.model || "";
   if ($("#cfg-auto")) $("#cfg-auto").checked = Boolean(cfg.autoApprove);
   if ($("#cfg-key") && cfg.apiKeySet) $("#cfg-key").placeholder = "已保存（留空则不变）";
   return cfg;
 }
+
+// Selecting a preset immediately fills the two dependent fields so the user
+// can see what will be sent; the actual providerPatch is applied by /config.
+$("#cfg-provider")?.addEventListener("change", async (e) => {
+  const id = e.target.value;
+  try {
+    const list = await window.wcc.providers();
+    const p = list.find((x) => x.id === id);
+    if (!p) return;
+    if (p.baseUrl && $("#cfg-base")) $("#cfg-base").value = p.baseUrl;
+    if (p.model && $("#cfg-model")) $("#cfg-model").value = p.model;
+    if ($("#cfg-provider-note")) $("#cfg-provider-note").textContent = p.note || "";
+  } catch (err) {
+    addMeta(`供应商预设读取失败：${err.message || err}`);
+  }
+});
 
 async function sendChat(text) {
   // expand @file mentions
@@ -607,6 +633,7 @@ $("#btn-bible-save")?.addEventListener("click", async () => {
 });
 $("#btn-cfg-save")?.addEventListener("click", async () => {
   const patch = {
+    provider: $("#cfg-provider")?.value || "deepseek",
     baseUrl: $("#cfg-base").value.trim(),
     model: $("#cfg-model").value.trim() || "deepseek-chat",
     autoApprove: $("#cfg-auto").checked,

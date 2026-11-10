@@ -1,56 +1,113 @@
 /**
  * Agent loop with OpenAI-compatible streaming (SSE) + tool calling.
- * Offline mode still returns a structured plan when no API key is set.
+ *
+ * P1 (2026-11-10): the standalone harness/ layer is now wired into the product.
+ *   - steering  -> conditional system injection (was: skill.md 前 2000 字全量)
+ *   - injector  -> on-demand tools (was: tools.list() 全量)
+ *   - budget    -> turn/token/wall-clock stop (was: guard < 8 硬循环)
+ *   - scratch   -> large tool results offloaded (was: slice(0, 50_000))
+ *   - hooks     -> lua_check quality gate on file.write
+ *   - dispatch  -> harness-owned tools routed to harness.dispatch()
+ *
+ * Offline mode (no API key) still returns a structured plan and invokes no
+ * tools. `harness` is injectable so server.js and the renderer share ONE
+ * instance (双表面可以，双数据源不行).
  */
-import fs from "node:fs";
-import path from "node:path";
 import { EXPERTS } from "./config-store.js";
+import {
+  createHarness,
+  createBudget,
+  resolveProvider,
+  summarizeHistory,
+  patchToolCalls,
+  STOP_REASONS,
+} from "../../../harness/src/index.js";
 
-const SYSTEM_CORE = `你是艾泽拉斯织码者，WCC 魔兽争霸3战役开发助手。
-铁律：只用 Lua；禁止 Wait/TriggerSleepAction/PolledWait；
-Handle 用完必须销毁；优先使用 wcc-lib（core/timer/gc/objects/dialogue/quest/spawner）；
-批量物编/单位优先 codegen_run + wcc-objects，不要手写重复 CreateUnit；
-写文件或改图前先说明意图；先 skill_load 再生成业务代码；生成后 lua_check。
-地图数据改图用 forge_*；工作台用 bible_get / chapter_tree。`;
+// Role header only. The iron rules / output protocol / forbidden actions are
+// NOT duplicated here — wcc-skill/skill.md is the single authority and is
+// injected by steering (see AGENTS.md §1).
+const SYSTEM_ROLE = `你是艾泽拉斯织码者，WCC 魔兽争霸3战役开发助手。
+编程铁律、代码输出协议与违禁行为以本轮注入的 # Steering 段为准；
+未列出的规范文档视为未生效，不要凭记忆假设其内容。`;
 
-export function createAgent({ tools, projectRoot, skillRoot, logger, getConfig, sessionStore }) {
+export function createAgent({
+  tools, projectRoot, skillRoot, logger, getConfig, sessionStore,
+  harness = null,
+  steeringBudget = 8000,
+  maxTools = 14,
+} = {}) {
   const history = [];
 
-  function assembleSystem() {
-    let skillSnippet = "";
-    try {
-      skillSnippet = fs.readFileSync(path.join(skillRoot, "skill.md"), "utf8").slice(0, 2000);
-    } catch {
-      skillSnippet = "(skill not found)";
-    }
+  // One harness instance for the whole product. When absent, build a local one
+  // so a standalone createAgent() can never silently bypass the harness.
+  const h = harness || createHarness({
+    projectRoot: projectRoot || process.cwd(),
+    skillRoot: skillRoot || undefined,
+    catalog: tools?.list?.() || [],
+    steeringBudget,
+    maxTools,
+  });
+
+  const harnessToolNames = new Set(
+    h.injector.catalog.filter((t) => t.source === "harness").map((t) => t.name)
+  );
+
+  /** Route a model tool call to the component that actually owns it. */
+  async function dispatchTool(name, args) {
+    if (harnessToolNames.has(name)) return h.dispatch(name, args);
+    return tools.dispatch(name, args);
+  }
+
+  function expertBlock() {
     const cfg = getConfig?.() || {};
     const expert = EXPERTS[cfg.expert] || EXPERTS.writer;
-    const expertBlock = `# 专家：${expert.name}\n${expert.system}`;
-    return `${SYSTEM_CORE}\n\n${expertBlock}\n\n# Skill excerpt\n${skillSnippet}`;
+    return `# 专家：${expert.name}\n${expert.system}`;
+  }
+
+  /** Conditional steering instead of a 2000-char blind slice of skill.md. */
+  function assembleSystem(intent = "", files = []) {
+    if (!h?.steering) return SYSTEM_ROLE;
+    const sel = h.steering.select({
+      intent,
+      files,
+      toolNames: h.injector.catalog.map((t) => t.name),
+      maxChars: steeringBudget,
+    });
+    const rendered = h.steering.render(sel);
+    h.lastSteering = sel;
+    return [SYSTEM_ROLE, expertBlock(), rendered].filter(Boolean).join("\n\n");
   }
 
   function modelConfig() {
     const cfg = getConfig?.() || {};
-    const baseUrl = cfg.baseUrl || process.env.WCC_MODEL_BASE_URL;
-    const apiKey = cfg.apiKey || process.env.WCC_MODEL_API_KEY;
-    const model = cfg.model || process.env.WCC_MODEL_NAME || "deepseek-chat";
-    return { baseUrl, apiKey, model, configured: Boolean(baseUrl && apiKey) };
+    const p = resolveProvider({
+      provider: cfg.provider,
+      baseUrl: cfg.baseUrl,
+      apiKey: cfg.apiKey,
+      model: cfg.model,
+    });
+    return {
+      provider: p.provider,
+      label: p.label,
+      baseUrl: p.baseUrl,
+      apiKey: cfg.apiKey || process.env.WCC_MODEL_API_KEY || "",
+      model: p.model,
+      configured: p.configured,
+    };
   }
 
-  function toolDefs() {
+  /** On-demand tool schemas instead of tools.list() in full. */
+  function toolDefs(intent = "", files = []) {
     const cfg = getConfig?.() || {};
-    const list = tools.list({ expert: cfg.expert });
-    return list.map((t) => ({
-      type: "function",
-      function: {
-        name: t.name,
-        description: `[${t.category || "tool"}] ${t.description}`,
-        parameters:
-          t.inputSchema && typeof t.inputSchema === "object"
-            ? t.inputSchema
-            : { type: "object", properties: {} },
-      },
-    }));
+    const plan = h.injector.select({
+      intent,
+      files,
+      expert: cfg.expert,
+      maxTools,
+      needForge: Boolean(cfg.needForge),
+    });
+    h.lastToolPlan = plan.plan;
+    return plan.tools;
   }
 
   function offlinePlan(userText) {
@@ -163,7 +220,7 @@ export function createAgent({ tools, projectRoot, skillRoot, logger, getConfig, 
     return { role: "assistant", content: content || "" };
   }
 
-  async function callModel(messages, onEvent) {
+  async function callModel(messages, onEvent, intent = "", files = []) {
     const cfg = modelConfig();
     if (!cfg.configured) {
       const text = offlinePlan(messages.filter((m) => m.role === "user").at(-1)?.content || "");
@@ -171,7 +228,7 @@ export function createAgent({ tools, projectRoot, skillRoot, logger, getConfig, 
       return { role: "assistant", content: text };
     }
     return streamChatCompletions(
-      { messages, tools: toolDefs(), tool_choice: "auto" },
+      { messages, tools: toolDefs(intent, files), tool_choice: "auto" },
       onEvent
     );
   }
@@ -183,12 +240,41 @@ export function createAgent({ tools, projectRoot, skillRoot, logger, getConfig, 
   async function runTurnStream(userText, onEvent) {
     sessionStore?.append({ type: "user", text: userText });
     history.push({ role: "user", content: userText });
-    const messages = [{ role: "system", content: assembleSystem() }, ...history.slice(-20)];
-    let full = "";
 
-    let guard = 0;
-    while (guard++ < 8) {
-      const msg = await callModel(messages, onEvent);
+    const files = [...String(userText).matchAll(/@([\w./-]+\.lua)/g)].map((m) => m[1]);
+    const messages = [{ role: "system", content: assembleSystem(userText, files) }, ...history.slice(-20)];
+    let full = "";
+    let feedbackInjected = false;
+
+    // Fresh budget per user turn: the shared h.budget is cumulative and would
+    // otherwise exhaust after 8 messages. maxTurns bounds this turn's tool loop.
+    const budget = createBudget({ maxTurns: 8, maxTokens: 60000 });
+    h.lastBudget = budget;
+    budget.consume(messages[0].content, { label: "system" });
+    budget.consume(userText, { label: "user" });
+    let stopReason = null;
+    let step = 0;
+
+    while (step < 8) {
+      step += 1;
+      budget?.beginTurn();
+      const verdict = budget?.check?.() || { exceeded: false, stopReason: null };
+      if (verdict.exceeded) {
+        stopReason = verdict.stopReason || STOP_REASONS.MAX_TURNS;
+        break;
+      }
+
+      // Compaction + broken tool-call repair before every model call.
+      const compacted = summarizeHistory(messages, { maxTokens: 24000, keepLast: 8 });
+      const repaired = patchToolCalls(compacted.messages);
+      const callMessages = repaired.messages;
+      if (repaired.patched) {
+        onEvent?.({ type: "harness", kind: "tool-calls-repaired", count: repaired.patched });
+      }
+
+      const msg = await callModel(callMessages, onEvent, userText, files);
+      budget?.consume(typeof msg.content === "string" ? msg.content : "", { label: "assistant" });
+
       if (msg.tool_calls?.length) {
         messages.push(msg);
         for (const tc of msg.tool_calls) {
@@ -202,39 +288,74 @@ export function createAgent({ tools, projectRoot, skillRoot, logger, getConfig, 
           onEvent?.({ type: "tool_start", name, args });
           sessionStore?.append({ type: "tool_start", name, args });
           logger?.info?.(`tool ${name}`);
-          const result = await tools.dispatch(name, args);
-          const truncated = String(result.output).slice(0, 50_000);
+          const result = await dispatchTool(name, args);
+
+          // Scratch offload instead of a blind 50k slice.
+          const raw = String(result.output ?? "");
+          const wrapped = h.scratch?.wrapToolResult(name, raw) ?? raw.slice(0, 50_000);
+          const offloaded = wrapped !== raw;
+          budget?.consume(wrapped, { label: `tool:${name}` });
+
           onEvent?.({
             type: "tool_end",
             name,
             ok: result.ok,
             denied: Boolean(result.denied),
-            output: truncated,
+            output: wrapped,
+            offloaded,
           });
           sessionStore?.append({
             type: "tool_end",
             name,
             ok: result.ok,
             denied: Boolean(result.denied),
-            output: truncated.slice(0, 4000),
+            output: wrapped.slice(0, 4000),
           });
-          messages.push({
-            role: "tool",
-            tool_call_id: tc.id,
-            content: truncated,
-          });
-          history.push({ role: "tool", content: `[${name}] ${truncated}` });
+          messages.push({ role: "tool", tool_call_id: tc.id, content: wrapped });
+          history.push({ role: "tool", content: `[${name}] ${wrapped}` });
+
+          // Quality gate on Lua writes (P0-5 hooks now really run).
+          if (name === "write_file" && result.ok && typeof args.path === "string" && args.path.endsWith(".lua")) {
+            const gate = await h.emit("file.write", { path: args.path });
+            const blocking = Boolean(gate?.blocking);
+            onEvent?.({ type: "harness", kind: "file-write-gate", path: args.path, blocking });
+            if (blocking) {
+              messages.push({
+                role: "user",
+                content: `[WCC 质量门禁] 刚写入的 ${args.path} 未通过 lua_check，请按报告修正后重新生成。`,
+              });
+              feedbackInjected = true;
+            }
+          }
+
+          // P1-6: feed a failed lua_check back once so the model can self-correct.
+          if (!feedbackInjected && /lua_check|wcc_check/.test(name) && /\bERROR\b|errors, [1-9]|\[no-/.test(wrapped)) {
+            messages.push({
+              role: "user",
+              content: `[WCC 质量门禁] lua_check 发现 error：\n${wrapped.slice(0, 2000)}\n请修正源码后再次检查，再给出最终答复。`,
+            });
+            feedbackInjected = true;
+          }
         }
         continue;
       }
+
       full = msg.content || full;
       history.push({ role: "assistant", content: full });
       sessionStore?.append({ type: "assistant", text: full });
       onEvent?.({ type: "done", text: full });
       return full;
     }
-    const err = "tool loop exceeded guard limit";
-    onEvent?.({ type: "error", message: err });
+
+    // Budget / step exhaustion: repair any dangling tool_calls before returning.
+    const patched = patchToolCalls(messages);
+    onEvent?.({
+      type: "error",
+      message: `agent loop stopped: ${stopReason || STOP_REASONS.MAX_TURNS}`,
+      repaired: patched.patched,
+    });
+    const err = `agent loop stopped: ${stopReason || STOP_REASONS.MAX_TURNS}`;
+    history.push({ role: "assistant", content: err });
     return err;
   }
 
@@ -257,11 +378,40 @@ export function createAgent({ tools, projectRoot, skillRoot, logger, getConfig, 
     return last;
   }
 
+  /** Single source of truth for /harness/* endpoints (P1-4). */
+  function harnessState() {
+    return {
+      wired: true,
+      layers: h.layers(),
+      steering: h.lastSteering
+        ? {
+            selectedIds: h.lastSteering.selectedIds,
+            usedChars: h.lastSteering.usedChars,
+            savedChars: h.lastSteering.savedChars,
+          }
+        : null,
+      tools: h.lastToolPlan || null,
+      budget: (h.lastBudget || h.budget)?.snapshot?.() || null,
+      spec: h.spec?.summary?.() || null,
+      provider: { ...modelConfig(), apiKey: undefined },
+      scratchCount: h.scratch?.list?.().length ?? 0,
+      hooks: h.hooks?.list?.() || {},
+      agentsFile: h.steering?.docs?.find((d) => d.rel === "AGENTS.md")?.rel || null,
+    };
+  }
+
   return {
     runTurn,
     runTurnStream,
     resumeFromHistory,
     getHistory: () => history.slice(),
     modelConfig,
+    harness,
+    harnessState,
+    dispatchTool,
+    get harnessInstance() { return h; },
   };
 }
+
+// Keep the legacy export name available for callers that imported SYSTEM_CORE.
+export const SYSTEM_CORE = SYSTEM_ROLE;

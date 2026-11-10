@@ -14,6 +14,7 @@ import { bundleCampaign } from "./build-map.js";
 import { createOnboarding } from "./onboarding.js";
 import { createMapSources } from "./map-sources.js";
 import { createSessionStore } from "./session-store.js";
+import { createHarness, listProviders, providerPatch } from "../../../harness/src/index.js";
 
 const PORT = Number(process.env.WCC_SIDECAR_PORT || 47840);
 const PROJECT = process.env.WCC_PROJECT_ROOT || process.cwd();
@@ -68,10 +69,22 @@ const onboarding = createOnboarding({ projectRoot: PROJECT, configStore, forgeMa
 const sessionStore = createSessionStore({ projectRoot: PROJECT });
 sessionStore.newSession();
 
+// ONE harness instance shared by the agent and the /harness/* endpoints.
+// 双表面可以，双数据源不行: renderer + TUI both read this single object.
+const harness = createHarness({
+  projectRoot: PROJECT,
+  skillRoot: SKILL,
+  config: configStore.getRaw(),
+  catalog: tools.list(),
+  steeringBudget: 8000,
+  maxTools: 14,
+});
+
 const agent = createAgent({
   tools,
   projectRoot: PROJECT,
   skillRoot: SKILL,
+  harness,
   getConfig: () => configStore.getRaw(),
   sessionStore,
 });
@@ -128,6 +141,9 @@ const server = http.createServer(async (req, res) => {
       projectRoot: PROJECT,
       tools: tools.list().length,
       modelConfigured: model.configured,
+      provider: model.provider,
+      harnessWired: true,
+      harnessLayers: harness.layers().length,
       forgeConnected: Boolean(forge.connected),
     });
   }
@@ -246,7 +262,24 @@ const server = http.createServer(async (req, res) => {
     const raw = await readBody(req);
     try {
       const patch = JSON.parse(raw || "{}");
-      const saved = configStore.save(patch);
+      // P1-5: selecting a provider preset fills baseUrl/model in one step.
+      // Explicit baseUrl/model in the same payload still win (custom endpoint).
+      let effective = patch;
+      if (patch.provider) {
+        try {
+          const preset = providerPatch(patch.provider, patch.apiKey || "");
+          // Drop empty baseUrl/model so a preset is not clobbered by blank
+          // form fields; an explicit non-empty value still wins (custom endpoint).
+          const overrides = { ...patch };
+          for (const k of ["baseUrl", "model"]) {
+            if (overrides[k] === "") delete overrides[k];
+          }
+          effective = { ...preset, ...overrides };
+        } catch (e) {
+          return json(res, 400, { error: String(e.message || e) });
+        }
+      }
+      const saved = configStore.save(effective);
       return json(res, 200, saved);
     } catch (e) {
       return json(res, 400, { error: String(e) });
@@ -334,6 +367,51 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, id: s.id, url: s.url, name: s.name });
     } catch (e) {
       return json(res, 500, { error: String(e.message || e) });
+    }
+  }
+
+  // ---- P1-4: harness read surface. Renderer + TUI read the SAME harness
+  // instance created above; no duplicated state, no second source of truth.
+  if (url.pathname === "/harness/state") {
+    return json(res, 200, agent.harnessState());
+  }
+  if (url.pathname === "/harness/providers") {
+    return json(res, 200, listProviders());
+  }
+  if (url.pathname === "/harness/steering") {
+    const intent = url.searchParams.get("intent") || "";
+    const files = (url.searchParams.get("files") || "").split(",").filter(Boolean);
+    const sel = harness.steering.select({ intent, files, maxChars: 8000 });
+    return json(res, 200, {
+      selectedIds: sel.selectedIds,
+      skippedIds: sel.skippedIds,
+      truncated: sel.truncated,
+      usedChars: sel.usedChars,
+      savedChars: sel.savedChars,
+      preview: harness.steering.render(sel).slice(0, 1200),
+    });
+  }
+  if (url.pathname === "/harness/tools") {
+    const intent = url.searchParams.get("intent") || "";
+    const plan = harness.injector.select({ intent, maxTools: 14 });
+    return json(res, 200, plan.plan);
+  }
+  if (url.pathname === "/harness/spec") {
+    return json(res, 200, harness.spec.summary());
+  }
+  if (url.pathname === "/harness/hooks") {
+    return json(res, 200, { handlers: harness.hooks.list(), log: harness.hooks.log().slice(-30) });
+  }
+  if (url.pathname === "/harness/scratch") {
+    return json(res, 200, harness.scratch.list());
+  }
+  if (url.pathname === "/harness/dispatch" && req.method === "POST") {
+    const raw = await readBody(req);
+    try {
+      const { name, args = {} } = JSON.parse(raw || "{}");
+      return json(res, 200, await agent.dispatchTool(name, args));
+    } catch (e) {
+      return json(res, 400, { error: String(e.message || e) });
     }
   }
 

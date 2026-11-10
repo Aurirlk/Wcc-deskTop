@@ -3,6 +3,9 @@
 > **2026-11-10 仓库状态补记（当日二次校正）**：本文撰写时「未 git commit / 未推送 / origin=gitclone.com」均为当时状态；当天成果已全部提交（`7fe0922`..`ef5a9be`，7 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开）。**当日稍后已完成三处同步**：以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，本地 `main`、GitHub `Aurirlk/Wcc-deskTop`、Gitee `wei-kaijie/Wcc-deskTop` 的 `main` 均已对齐（合并提交 `d8ccdfb`）；GitHub **不再**停在 `12b9169`。
 > 此后仓库持续开发，**最新 HEAD 一律以 `git log -1` / `git ls-remote` 为准，本文不再跟踪具体 commit**；开发主线与排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，换机说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
+
+> **⚠️ P1 状态更新（2026-11-10 第三次校正）**：本文 §0/§1 中「未改动 agent.js / server.js」、「harness 是可独立运行的旁路层，还没接进主 Agent Loop」均为**撰写当时**状态，现已改变：`createHarness()` 已接入 `packages/wcc-sidecar/src/agent.js`（steering / injector / budget / scratch / hooks / 工具路由），`server.js` 新增 `/harness/*` 端点并共用同一实例。§7 第 1/2/4 项已转为 ✅；第 5–8 项（打包、真 forge 联调、独立 MCP server、TUI 真机验收）仍属 P3/P4 未完成。**本文保留为实现记录快照，进度以 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) §11 为准。**
+
 > 2026-11-09 晚 · 把此前四份调研稿（`HARNESS-REFERENCE.md` / `FEASIBILITY-REVIEW.md` / `FORGE-INTEGRATION.md` / `ASSETS-GUIDE.md`）的结论**落成可运行代码**，并回答「真做 Harness 需要什么脚本 / 工具注入怎么配合 / TUI 怎么做 / 隔壁 WC3 能抄什么」。
 > 本文是**实现记录**，不是规划稿。所有「✅」都有对应文件与实测命令；所有「🔴 / 🟠」都明确列出未做。
 
