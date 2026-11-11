@@ -35,8 +35,13 @@ maxChars: 2600
    - `node harness/bin/wcc-harness.mjs demo` — harness 离线全链路
 3. **证据等级**：✅ 本机实测 / 🟠 文档或二手 / 🔴 未实现未验证。
    写 ✅ 必须附可复现命令与输出；禁止把"计划中"写成"已完成"。
-4. **分支与远端**：本地 `main` 跟踪 `origin/main`（GitHub），另有 `gitee` 远端。
-   三处 `main` 已同步；推两端用 `git push origin main` 与 `git push gitee main`。
+4. **分支与远端 —— 单一逻辑数据源**：本地 `main`、GitHub `origin/main`、Gitee `gitee/main`
+   是**同一份数据的三处副本**，不再区分「主仓库 / 镜像 / 谁更新」。每次推送必须**两端同时同步**：
+   `npm run sync`（推两端并校验一致）、`npm run sync:check`（只校验不推）。
+   **禁止只推一端、禁止 `--force`**；脚本检测到远端分叉会直接拒绝，此时先 `fetch` + `merge/rebase` 再同步。
+   > ⚠️ 术语消歧：本节说的「单数据源」只针对 **git remote**。§1 标题与 §2.5 里的
+   > 「避免双数据源 / 双数据源不行」指的是**文档权威（只认 `wcc-skill/skill.md`）**与
+   > **harness 运行时状态（TUI / renderer 共用同一实例）**，与 GitHub/Gitee 无关，**始终有效，不得删除**。
 5. **harness 硬约束**：零 npm 依赖、零 Python、无 LangGraph；
    **双表面可以，双数据源不行**（TUI / renderer 共用同一份状态）。
 6. **不入库**：`.lnk`、`.wcc/config.json`（含 apiKey）、令牌、`.w3x` 二进制、本机绝对路径。

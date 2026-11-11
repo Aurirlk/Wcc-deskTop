@@ -14,6 +14,8 @@
     "test:harness": "node --test harness/test/harness.test.js",
     "test": "npm run test -w @wcc/sidecar && npm run test -w @wcc/lua-check && npm run test -w @wcc/shared && npm run test:harness",
     "sidecar": "node packages/wcc-sidecar/src/server.js",
+    "sync": "node scripts/sync-remotes.mjs",
+    "sync:check": "node scripts/sync-remotes.mjs --check-only",
     "postinstall": "node scripts/optional-electron.js"
   },
   "engines": {
