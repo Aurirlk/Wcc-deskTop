@@ -1,6 +1,6 @@
 # WCC 下一步开发计划
 
-> **状态：P1.5 进行中；P0 / P1 已归档见附录 A。**
+> **状态：P2 进行中（条件触发）；P0 / P1 / P1.5 已归档见附录 A。**
 >
 > **基线**：HEAD 以 `git log -1` 为准。本地 `main`、GitHub `origin/main`、Gitee `gitee/main` 是**同一份数据的三处副本**（单一逻辑数据源 + 两个镜像），不再区分主仓库 / 镜像 / 谁更新；每次推送用 `npm run sync`，只校验用 `npm run sync:check`。
 > **裁决顺序**：代码事实 > 最新主线文档 > 历史文档（快照）。
@@ -20,23 +20,23 @@
 
 ## 0. 现状
 
-`harness/` 已接入主产品 Agent Loop，`server.js` 暴露 `/harness/*` 并共用同一实例；但产品侧仍有一批能力未接线（pipeline / spec 每轮注入 / TUI）与状态虚标（见 §4）。桌面 UI → Sidecar → Agent → 工具 → Lua 静态检查 → `war3map.lua` 脚本包这条链代码上可跑；**「一句话 → 真实模型生成 Lua → 检查 → 产出可试玩 `.w3x`」端到端未通**。硬断点在 `build-map.js` 只产文本脚本包、仓库零 `.w3x`、无地图数据层。
+`harness/` 已接入主产品 Agent Loop，`server.js` 暴露 `/harness/*` 并共用同一实例；产品侧**仍未接线**的是 7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering`（仅 CLI 与自测使用；产品化见 P3 / P4 纲要）。状态虚标与门禁空转的修复记录见附录 A.4。桌面 UI → Sidecar → Agent → 工具 → Lua 静态检查 → `war3map.lua` 脚本包这条链代码上可跑；**「一句话 → 真实模型生成 Lua → 检查 → 产出可试玩 `.w3x`」端到端未通**。硬断点在 `build-map.js` 只产文本脚本包、仓库零 `.w3x`、无地图数据层。
 
 ## 1. 现行基线（实测，非文档声称）
 
 | 命令 / 检查 | 实测结果 |
 |---|---|
-| `npm test` | 57 pass / 0 fail（sidecar 35 + lua-check 2 + shared 1 + harness 19） |
+| `npm test` | 60 pass / 0 fail（sidecar 37 + lua-check 2 + shared 1 + harness 20） |
 | `npm run check` | 13 files / 0 errors / 3 warnings / ok=true（warning 为复核提示，不阻断） |
 | `node harness/bin/wcc-harness.mjs demo` | EXIT=0，离线全链路 |
-| `node harness/bin/wcc-harness.mjs selftest` | 19/19 |
+| `node harness/bin/wcc-harness.mjs selftest` | 20/20 |
 | `node scripts/optional-electron.js` | `electron NOT usable: dist folder missing`，`dev:desktop` 起不来 |
-| `npm run build:desktop` | 当前为 `echo` 占位，**属假成功**，见 §4 WP7 |
+| `npm run build:desktop` | EXIT=1 + `electron-builder packaging is P3 and is NOT implemented`（不再假成功） |
 | 全仓 `.w3x` / `.w3m` | 零个 |
 | 真实模型 key | 未配置；无 key 时 `/chat` 走 `offlinePlan()` 只回文本、零 tool_calls |
-| `/health` 的 `harnessWired` | 硬编码 `true`，非真实探测，见 §4 WP6 |
+| `/health` 的 `harnessWired` / `harnessAgentsFile` | 运行时探测（agent 能力 + 共用实例）；`AGENTS.md` 命中 |
 
-桌面默认 `PROJECT = examples/demo-campaign`，该目录无 `AGENTS.md`，而 `server.js` 建 harness 时未传 `agentsFile` → **桌面默认场景未注入仓库契约**。
+桌面默认 `PROJECT = examples/demo-campaign`（该目录无自己的 `AGENTS.md`）；`server.js` 与 `agent.js` 显式传入仓库根唯一那份 `AGENTS.md`，实测 `/harness/steering` 命中 `agents`、`/health` 的 `harnessAgentsFile=AGENTS.md`。
 
 ## 2. 已定决策与文档分层
 
@@ -59,30 +59,17 @@
 
 | 阶段 | 目标 | 依赖 | 完成标志 |
 |---|---|---|---|
-| **P1.5** | 口径统一 + P1 残留收尾，建立可验收的产品底座 | 无 | §4 全部 WP 通过，§7 收尾门禁全绿 |
 | **P2** | 文本 IR + 真实 `.w3x` 读改回写 + E3 Lua 脚本进图 | P1.5；阶段 A/B 依赖用户自备环境 | `MAP-COMPILE-PIPELINE.md` 两阶段 P0 全过 |
 | **P3** | 打包分发、GPL 红线、真 forge 联调、独立 MCP server、TUI 真机验收 | P2 全过 + Electron 可用 | 新机器双击即用 |
 | **P4** | forge PR 生态 | P3 中踩到真实 bug | 议题来自真实需求，不编造 |
 
+P0 / P1 / P1.5 的任务表与实测记录见附录 A。
+
 **P2 未通过前，仓库内任何「已支持地图生成 / 已打通编译链」的说法都不成立。**
 
-## 4. P1.5 收尾（详细）
+## 4. P1.5 收尾 → 附录 A.4
 
-> `AGENTS.md` 是 `mode: always` 注入给所有 Agent 的契约，**只允许改 §3 现状速记的过期句与 §1 排期指针**；严禁改 §2 工程约定、尤其术语消歧块；不得复述铁律、不得新增第二份规范。改后必跑 harness 自测断言 `agents` 命中。
-
-| WP | 类型 | 主要文件 | 改动要点 | 验收 |
-|---|---|---|---|---|
-| **WP1** | 文档 | 本文件；`AGENTS.md`、`README.md`、`docs/HARNESS-IMPLEMENTATION.md`、`docs/HARNESS-REFERENCE.md`、`docs/P0-DISPOSITIONS.md` 的跨文档指针 | 按「防过期机制」重构；6 处带章节号的悬空指针改文档级链接；附录 A 补 N1–N6「已处置」 | 全文无旧基线 commit、带章节号的悬空指针与全局未开工断言（由 `docs:check` 断言 1 校验）；`npm test` 不回退 |
-| **WP2** | 文档 | `AGENTS.md` §3、`docs/MAP-COMPILE-PIPELINE.md`、`docs/NEW-MACHINE-SETUP.md`、`docs/DEPLOYMENT-SHORTCUTS.md`、`README.md` | 8 个文件里「未拍板 / 待拍板 / 第 0 号决策」改为「**已拍板：B+A 双轨**」；编译链缺口 #10 改 ✅；历史段落保留原文只加注记 | 全仓无活跃「未拍板」；harness 自测 19/19 |
-| **WP3** | 文档 | 6 篇 docs 文首、`README.md`、`docs/DEPLOYMENT-SHORTCUTS.md`、`docs/NEW-MACHINE-SETUP.md`、`docs/ASSETS-GUIDE.md` | 11-10 Gitee 叙事原文保留 + 加「历史快照，现行口径见 AGENTS.md §2.4 / `npm run sync`」注记；去「Gitee 主仓库」；手工双 push 改 `npm run sync`；回归基线 27→57 / 15→19 / 3 warnings；`wcc-lib` 统一 11 个 .lua / 1848 行 | §7 门禁 grep 无残留；`npm run sync:check` EXIT=0 |
-| **WP4** | 文档 | `README.md`、`examples/demo-campaign/README.md`、`wcc-skill/skill.md`、`wcc-skill/knowledge/{conventions,project-structure}.md`、`packages/wcc-skill-mimocode/.../SKILL.md`、`docs/ASSETS-GUIDE.md`、`docs/DEVELOPMENT-NOTES.md`、根 `wcc-*.md` | **区分两类 require**：源码内 `require("src.*")` 合法（`build-map.js` 内联为 `__wcc_require`），保留并加统一消歧注记；**进图指引**「WE 触发器写 `require("src.main")`」与「打开 `demo-campaign.w3x`」删改为「粘贴 `dist/build/war3map.lua` 全文 / P2 阶段 B E3 durable 双写」；`ASSETS-GUIDE.md` 的「补 build_map 写二进制」改指两阶段 P0；根三份愿景文档加统一快照横幅，**正文不改** | 无活跃 `在 World Editor 中打开` / `demo-campaign.w3x` 虚标 / `触发器，内容为.*require`；含 `require("src` 的 skill 文档都有 `__wcc_require` 注记 |
-| **WP5** | 文档 | `docs/MAP-COMPILE-PIPELINE.md` §6.1、`docs/MAP-GENERATION-PLAN.md`、`docs/HARNESS-IMPLEMENTATION.md` | 三套 IR 目录契约改「唯一权威（编译链 §6.1）+ 指针」，字段 `wc3Patch`→`targetPatch`；地图计划内部 P0/P1/P2 改名 M0/M1/M2（映射见附录 B） | 全仓无第二份 `.wcc/ir/` 目录树 |
-| **WP6** | 代码 | `packages/wcc-sidecar/src/server.js`、`packages/wcc-sidecar/src/agent.js` | `createHarness()` 显式传 `agentsFile` 指向**仓库根唯一那份** `AGENTS.md`（不得复制第二份）；`agent.js` fallback 同步；`/health` 的 `harnessWired` 改真实探测；注释收窄为「产品进程内单实例，独立 CLI TUI 另建实例」。pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧 0 调用，**如实标注未接线，本轮不强行接** | 以 `WCC_PROJECT_ROOT=examples/demo-campaign` 起 sidecar，`/harness/steering` 命中 `agents`；新增 1 条 agentsFile 回归测试 |
-| **WP7** | 代码 | `apps/wcc-desktop/src/renderer/app.js`、`index.html`、`apps/wcc-desktop/package.json` | renderer 消费已暴露但零调用的 `harnessState()` / `harnessSteering()`，加最小状态面板（wired / layers / savedChars / selected tools）；`#btn-check` 把 `lua_check` 结果写入 `#check-out`；`build` 去掉 echo 假成功，改为明确报错「electron-builder 打包属 P3，未实现」 | `npm run build:desktop` 非 0 且含「P3 未实现」；`app.js` 命中 `harnessState` |
-| **WP8** | 代码 | `harness/src/hooks.js` | `defaultGateRunner` 的 targets 改为相对仓库根可解析（当前桌面项目下两路径都不存在 → `skipped:true` 空转）；`turn.start` 产品侧不 emit、spec 仅 CLI 注入如实标注 | 新增测试：`createHarness({projectRoot:'examples/demo-campaign'})` 后 `task.complete` 返回 `skipped:false` |
-| **WP9** | 文档 + 验证 | 全仓 `*.md`（排除 `.workbuddy/`、`.novel-workflow/`、`.omo/`、`attic/`、4 个保留未跟踪项） | **独立一道收尾门禁**：执行 §7 检查表，逐条留输出 | §7 全部断言通过；`npm test` / `npm run check` / demo / selftest 全绿 |
-
-**内部顺序**：WP1 →（WP2 / WP3 / WP4 并行）→ WP5 → WP9 门禁 →（WP6 / WP7 / WP8 并行）→ WP9 复跑。WP2 改 `AGENTS.md` 后立刻跑 harness 自测。
+该阶段的任务表与实测记录已整块移入附录 A.4，正文不再保留它的任务条目。
 
 ## 5. P2 进图（详细，条件触发）
 
@@ -114,10 +101,10 @@
 ### 7.1 每阶段必跑
 
 ```bash
-npm test                                   # 基线 57/57；代码改动须追加测试并说明新增数
+npm test                                   # 基线 60/60；代码改动须追加测试并说明新增数
 npm run check                              # 13 files / 0 errors / 3 warnings / ok=true
 node harness/bin/wcc-harness.mjs demo       # EXIT=0
-node harness/bin/wcc-harness.mjs selftest   # 19/19
+node harness/bin/wcc-harness.mjs selftest   # 20/20
 node scripts/optional-electron.js           # 必须报 NOT usable，不得谎报 present
 npm run sync:check                         # 推前校验三处一致
 ```
@@ -183,7 +170,7 @@ P2 追加：三脚本负例单测、sha256 比对输出、WE / Test Map 截图�
 
 **回归基线**：`npm test` 57/57（sidecar 35 + lua-check 2 + shared 1 + harness 19）· `npm run check` 0 errors / 3 warnings · `harness demo` EXIT=0 · 三处同步。
 
-**收窄口径**：P1 接入的是 steering / injector / budget / scratch / hooks / 工具路由与 `/harness/*` 端点；**renderer 未消费 harness 状态、7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧未接线**，见正文 §4 WP6–WP8。
+**P1 当时的收窄口径**：P1 接入的是 steering / injector / budget / scratch / hooks / 工具路由与 `/harness/*` 端点；当时 renderer 未消费 harness 状态，7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧未接线。其中 renderer 状态消费、门禁空转与状态虚标已在附录 A.4（WP6–WP8）处置；pipeline 等仍未接线。
 
 ## A.3 单一逻辑数据源与双端同步（提交 `7511de4`）
 
@@ -192,6 +179,34 @@ P2 追加：三脚本负例单测、sha256 比对输出、WE / Test Map 截图�
 实测：`npm run sync` 快进推两端并校验 `local=github=gitee`；隔离临时 git 仓库验证「只推一端自动补齐 → EXIT=0」「远端分叉拒绝且两端未被改动 → EXIT=1」「脏工作区拒绝 → EXIT=1」；`npm test` 57/57、`npm run check` 0 errors、harness demo EXIT=0。
 
 > 4 个保留未跟踪项（`.novel-workflow/`、`.omo/`、`wcc-core.lua`、`项目状态与改进报告.md`）与 `.workbuddy/` 始终未入库。
+
+## A.4 P1.5 口径统一与产品底座收尾（M0 + M1）
+
+**阶段推进**：状态行由「P1.5 进行中」改为「P2 进行中（条件触发）」；P1.5 任务表整块迁入本附录。附录 A.1–A.3 中的测试数是各阶段当时的实测值，现行基线见第一部分现状。
+
+### M0 文档口径（WP1–WP5 + WP9 门禁）
+
+| 任务 | 落地 | 验证 |
+|---|---|---|
+| WP1 主计划重构 | 计划正文 / 执行记录物理分区、状态行只写当前阶段、5 条防过期机制；6 处带章节号的悬空指针改文档级链接 | `npm run docs:check` 断言 1 PASS |
+| WP2 双轨回填 | 8 个文件「决策未定」改为「已拍板 B+A 双轨」；编译链缺口 #10 转 ✅；历史段落保留原文加注记 | 全仓无活跃决策未定声明；harness 自测通过 |
+| WP3 单数据源与基线 | 6 篇文首加历史快照注记、去「主仓库」叙事、手工双 push 改 `npm run sync`、回归基线刷新 | 门禁断言 3 PASS；`npm run sync:check` EXIT=0 |
+| WP4 进图指引 | 源码内 `require` 加消歧注记；WE 入口改粘贴 `dist/build/war3map.lua`；删 `demo-campaign.w3x` 虚标 | 门禁断言 4a PASS |
+| WP5 IR 与编号 | `.wcc/ir/` 唯一权威定为编译链 §6.1；地图计划内部 P0/P1/P2 改名 M0/M1/M2 | 门禁断言 4b PASS |
+| WP9 门禁 | 新增 `scripts/check-doc-consistency.mjs` + `npm run docs:check`，7 条断言，模式串只存 `.mjs` | 7 PASS / 0 FAIL |
+
+### M1 代码侧（WP6–WP8 + WP9 复跑）
+
+| 任务 | 落地 | 验证 |
+|---|---|---|
+| WP6 `agentsFile` | `server.js` / `agent.js` 用 `REPO_ROOT` 显式传入仓库根唯一那份 `AGENTS.md`（不复制第二份）；`SKILL` 改绝对路径；`/health` 的 `harnessWired` 由硬编码 `true` 改为运行时探测（agent 能力 + 共用实例），新增 `harnessAgentsFile`；注释收窄为「产品进程内单实例，独立 CLI TUI 另建实例」 | `packages/wcc-sidecar/test/agents-file.test.js`：裸项目根起 sidecar，`/harness/steering` 命中 `agents`、`/health` 返回 `harnessWired=true` / `harnessAgentsFile=AGENTS.md`；`createAgent` fallback 用 `examples/demo-campaign` 亦命中 |
+| WP7 renderer 与 build | renderer 新增 `refreshHarnessState()` 消费已暴露但零调用的 `harnessState()` / `harnessSteering()` / `harnessTools()`，home 页显示 wired / layers / AGENTS.md / steering / savedChars / selected tools；新增 `/check` 端点复用**同一个** `lua_check` 工具，`#btn-check` 直接把报告写入 `#check-out`（不再转发到聊天）；`build` 去掉 echo 假成功 | `npm run build:desktop` → EXIT=1 + `electron-builder packaging is P3 and is NOT implemented`；实机 `/check?subpath=src` → HTTP 200 `wcc-lua-check: 2 files, 0 issues`，缺目录 → HTTP 500 `ok:false`；`app.js` 命中 `harnessState` |
+| WP8 门禁空转 | `defaultGateRunner` 增加 `repoRoot` 回退，并把「项目自身 `src/`」列为候选；`createHarness` 用自身位置推出 `REPO_ROOT` 并传入；`harness/src/index.js` 文首如实标注 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧 0 调用 | `harness/test/harness.test.js` 新增用例：`createHarness({projectRoot:'examples/demo-campaign'})` 后 `task.complete` → `skipped:false`、`errors:0`、`verdict:allow` |
+| WP9 复跑 | 全量回归 + 门禁 + 双端同步 | `npm test` **60/60**（sidecar 37 + lua-check 2 + shared 1 + harness 20）；`npm run check` 13 files / 0 errors / 3 warnings / ok=true；harness demo EXIT=0；CLI selftest 20/20；`npm run docs:check` 7 PASS；`npm run sync` 后三处一致 |
+
+**如实标注**：7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧仍为 0 调用，本阶段不强行接线（P3 纲要）；`dev:desktop` 与 Electron 二进制仍不可用；真实模型 key 未配置；全仓零 `.w3x`。这些都不写成已闭环。
+
+**排查记录**：WP7 的 `/check` 回归最初写成在同一测试文件内并发启动两个 sidecar 子进程，Windows / Node 22 下触发 `0xC0000409` 使测试进程整体崩溃。手工起服务确认端点本身正常（HTTP 200 / 500 均正确），改为复用同一个子进程后 2/2 通过；不是端点缺陷，也不是掩盖失败。
 
 ---
 
