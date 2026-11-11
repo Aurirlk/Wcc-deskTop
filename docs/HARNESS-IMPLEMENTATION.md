@@ -29,6 +29,8 @@
 
 > 一句话：调研里的「最划算三件」（steering 条件加载、hooks 质量门禁、spec 落盘）已经**有代码、有测试、有 CLI**；但它们是**可独立运行的旁路层**，还没接进主 Agent Loop。接进去才是产品化，本文 §7 列为第一步。
 
+> **⚠️ 已推翻（2026-11-11）**：上面「旁路层 / 还没接进主 Agent Loop」是**撰写当时**结论。P1 已把 `createHarness()` 接入 `agent.js`，P1.5 又补齐 `agentsFile` 注入、renderer 状态面板、`/check` 真实检查输出与质量门禁。现行口径以本文文首状态更新注记与 `docs/NEXT-DEVELOPMENT-PLAN.md` 附录 A.4 / A.5 为准；§7 的「第一步」已完成，剩下的是打包分发、真 forge 联调、独立 MCP server 与 TUI 真机验收。
+
 ---
 
 ## 1. 调研 → 实现映射（`HARNESS-REFERENCE.md` 第 3 节逐条对账）

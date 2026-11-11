@@ -15,8 +15,14 @@
 | 物编 ID 字典 | 单位/物品/技能四字码、模型路径、图标路径、区域名 → **零** | 🔴 AI 幻觉 `'hfoo'`/`'n001'` 的根因 |
 | 测试底图 | 零 | 🔴 无法跑「脚本包 → 真实地图」闭环 |
 | 游戏美术资产 | 零（模型/贴图/图标/音效） | ✅ 刻意合规：ADR §八「不分发暴雪资产」 |
-| 知识素材 | `wcc-skill/` 3 knowledge + 4 patterns；`vendor/wc3-lua-annotations` 4635 行 | ✅ 全项目最厚的一块，是真正的资产 |
+| 知识素材 | `wcc-skill/` 4 knowledge + 4 patterns（含新增的字典骨架）；`vendor/wc3-lua-annotations` 4635 行 | ✅ 全项目最厚的一块，是真正的资产 |
 | 参考实现 | 仅 `wcc-lib/` 11 个自研 Lua 模块 / 1848 行 | 🟠 无外部生态参照 |
+
+> **现行状态（2026-11-11）**：上表「物编 ID 字典 = 零」指**可核实的数据条目为零**，这一判定仍成立。
+> 仓库已新增 [`wcc-skill/knowledge/wc3-object-ids.md`](../wcc-skill/knowledge/wc3-object-ids.md) 作为骨架：
+> 区分官方 / 自定义 rawcode、记录仓库内 4 个未核实四字码、点破 `vendor/` 里 857 个四字码是 JASS 字段常量
+> 而非物编 ID、写明 SLK 提取与逐条登记流程。但**已核实条目表仍为空、覆盖率 0、🔴 不完整**，不可用于生成代码；
+> 本机 MPQ / SLK 路径实测不存在，`w2l mpq` 未运行。这仍是 ROI 最高且尚未补完的一项。
 
 **结论**：缺的不是「好看的模型」，而是**让 AI 写对代码所需的领域数据 + 可跑的示例**。
 美术资产按你自己的 ADR 本来就不该进仓库，不应算缺口。
@@ -56,7 +62,7 @@ WCC 的 AI 最容易出错的地方不是「不会写 Lua」，而是**瞎编魔
 
 | 目标文件 | 内容 | 来源 |
 |---|---|---|
-| `wcc-skill/knowledge/wc3-object-ids.md` | 常用单位/英雄/物品/技能四字码 + 中文名 + 分类 | 本机 MPQ 的 `Units\UnitData.slk` / `UnitUI.slk` / `AbilityData.slk` / `ItemData.slk`；或 War3Net 数据集 |
+| `wcc-skill/knowledge/wc3-object-ids.md` | 常用单位/英雄/物品/技能四字码 + 中文名 + 分类（**骨架已建，已核实条目为空 🔴**） | 本机 MPQ 的 `Units\UnitData.slk` / `UnitUI.slk` / `AbilityData.slk` / `ItemData.slk`；或 War3Net 数据集 |
 | `assets/paths.json` | 模型 / 图标 / 音效路径表 | 本机 MPQ 的 `(listfile)` + `UnitUI.slk`；或 Hive 公开 ID 列表 |
 | 扩充 `examples/demo-campaign/tables-sample.json` | 至少 3 章：对话链、主线+支线任务、3 波刷怪、1 场 Boss | 参照 `wcc-skill/patterns/task-*.md` 自造 |
 
@@ -117,7 +123,7 @@ WCC 的 AI 最容易出错的地方不是「不会写 Lua」，而是**瞎编魔
 1. **选一张真实 `.w3x` 作底图** — 按 [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md) 两阶段 P0 验收，从 `Maps\Scenario\` 选一张非加密官方小图，只产出 `.edited.w3x` 副本（原图不动）。
    **不要**补一个虚构的示例地图文件，也不要在 WE 触发器里写 `require("src.main")`。
 2. **扩充 `tables-sample.json` 到 3 章** — 对话 / 任务 / 刷怪 / Boss 各给完整样本，AI 才有格式可依。
-3. **提一份物编 ID 表** — `wcc-skill/knowledge/wc3-object-ids.md`，这是 ROI 最高的一项。
+3. **补完物编 ID 表** — 骨架已在 `wcc-skill/knowledge/wc3-object-ids.md`，但已核实条目仍为空；按该文 §6 的流程从 SLK 逐条登记来源，**绝不编造 ID**。这仍是 ROI 最高的一项。
 4. **进图能力按两阶段 P0 建设** — 先文本 IR + `wcc.map.snapshot` / `diff` / `verify`，再阶段 A 数据改写、阶段 B E3 Lua 注入；`build_map` 目前只产 `war3map.lua` 脚本包、不写二进制 `.w3x`（见 [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md)）。
 5. **3 章 demo + 端到端测试** — 有了底图才能真正跑「生成 → check → 注入 → 进游戏 → 日志回流」。
 

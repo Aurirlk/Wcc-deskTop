@@ -221,6 +221,24 @@ P2 追加：三脚本负例单测、sha256 比对输出、WE / Test Map 截图�
 
 **排查记录**：`git apply -R` 首次在本机把回滚结果写成 CRLF（Windows `core.autocrlf=true`），字节断言失败；显式 `-c core.autocrlf=false` 后通过。这是环境差异，不是 diff 生成逻辑缺陷。
 
+## A.6 文档口径复核与索引整理（2026-11-11 晚）
+
+**范围**：只整理，不新增排期文档、不改代码、不推进状态行。
+
+| 任务 | 落地 | 验证 |
+|---|---|---|
+| 修 `AGENTS.md` 被自身预算截断 | front matter `maxChars: 2600 → 3600`（正文 3033 字符）；§3 现状速记重写为 11-11 口径（P1 / P1.5 已接入、P2 地基已落地、阶段 A/B 🔴 未闭环、现行基线、B+A 双轨）。**只改 §3 与 front matter；§2 工程约定与术语消歧块未动，未复述铁律** | 修前 `doc.chars=2726 > maxChars=2600`、`truncated` 含 `agents`、末尾双轨决策句未注入；修后 `agents truncated=false`，渲染含「排期与执行记录见」「B+A 双轨已拍板」「67/67」 |
+| README 收敛为一份分层索引 | 主线 / 参考 / 快照三层索引（**唯一索引，不另建文档地图**），补 `wc3-object-ids.md` 与 `docs:check` / `sync` 现行命令；删除 v1.0 遗留的第二个文档区、旧路线图与「历史目录 / 新仓库」双叙事；代码规范改指向 `wcc-skill/skill.md` 唯一权威；示例地图加「`.w3x` 不入库」；补 P1.5 / P2 状态注记 | `npm run docs:check` 7 PASS；README 无重复文档标题、无「新仓库」叙事 |
+| 旧调研过期结论加注记 | `ASSETS-GUIDE.md`（缺口表 / 目标文件表 / 行动项 3，knowledge 3→4）、`MAP-GENERATION-PLAN.md`（能力表 / 借鉴流前置依赖 / 依赖表）、`HARNESS-IMPLEMENTATION.md`（「旁路层未接进主 Agent Loop」标注已推翻）、`MAP-COMPILE-PIPELINE.md`（`w2l mpq` 指向新字典）。**历史正文保留原样，只加注记** | 门禁断言 2 / 3 / 4 全 PASS；物编字典「覆盖率 0、🔴 不完整」在三份文档口径一致 |
+| 换机清单补门禁 | `docs/NEW-MACHINE-SETUP.md` 安装回归命令与迁移完成判定补 `npm run docs:check` 与 `build:desktop` 如实 EXIT=1 | `npm run docs:check` 7 PASS |
+
+**全量回归**：`npm test` 67/67 · `npm run check` 13 files / 0 errors / 3 warnings ·
+harness demo EXIT=0 · CLI selftest 27/27 · `npm run docs:check` 7 PASS / 0 FAIL ·
+`npm run sync:check` 通过。提交后 `npm run sync` 推两端并三方校验。
+
+**如实标注**：本轮只做文档整理，**没有**改排期、没有解封阶段 A/B、没有补物编字典数据、
+没有接线 pipeline / `prepareTurn` / spec / TUI。状态行仍是「P2 进行中（条件触发）」。
+
 ---
 
 # 附录 B · P 编号映射

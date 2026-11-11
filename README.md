@@ -5,7 +5,7 @@
 > **单一逻辑数据源**：本地 `main`、GitHub <https://github.com/Aurirlk/Wcc-deskTop>、Gitee **私有**仓库 <https://gitee.com/wei-kaijie/Wcc-deskTop>（项目仍是半成品，刻意不公开）是**同一份数据的三处副本**，不再区分主仓库 / 镜像 / 谁更新；每次推送两端同时同步（`npm run sync` / `npm run sync:check`）。最新 HEAD 一律以 `git log -1` 为准。
 >
 > <sub>历史快照（2026-11-10）：当日曾「以 Gitee 最新提交为基准合并 GitHub 原分叉与本地改动」，该叙事仅作沿革记录，不是现行口径。</sub>
-> 开发主线与下一步排期见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)；换机、凭据与归档见 [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) §1。最新 HEAD 一律以 `git log -1` 为准。
+> 开发主线与下一步排期见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)；换机、凭据与归档见 [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) §1。
 
 > 🎮 让 AI 成为你的魔兽争霸3战役开发搭档
 
@@ -135,9 +135,11 @@ bossFight.Start({
 Harness 层（独立目录、零依赖、**不进 npm workspaces**，不影响上面的命令）：
 
 ```bat
-node --test harness/test/harness.test.js
-node harness/bin/wcc-harness.mjs demo
-node harness/bin/wcc-harness.mjs tui --static
+npm test                                   :: 全量回归（现行基线见主计划第一部分）
+npm run check                              :: Lua 静态检查（0 error 才算通过）
+npm run docs:check                         :: 文档口径一致性门禁
+node harness/bin/wcc-harness.mjs demo      :: 离线全链路
+node harness/bin/wcc-harness.mjs selftest :: harness 自测
 ```
 
 > ✅ **2026-11-10 P1 已接入**：`harness/` 不再是旁路层——`createHarness()` 已接进
@@ -147,6 +149,10 @@ node harness/bin/wcc-harness.mjs tui --static
 > 它仍保持**零 npm 依赖、不进 npm workspaces**，上面的 CLI 命令依旧可独立运行。
 > 实现细节见 [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md)，
 > P1 验收记录见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) 附录 A。
+>
+> ✅ **2026-11-11 状态补充**：P1.5 已补齐 `agentsFile` 注入、renderer 状态面板、`/check` 真实检查输出与质量门禁；
+> P2 已落地 `wcc.map.snapshot` / `diff` / `verify` 三个文本 IR 闸门（见主计划附录 A.4 / A.5）。
+> `npm run build:desktop` 目前明确报错「P3 未实现」并 EXIT=1，**不是**打包成功。
 
 模型（可选，Sidecar 环境变量）：
 
@@ -160,22 +166,30 @@ AI会自动生成符合WCC规范的代码！
 
 ## 文档
 
-- [AGENTS.md](AGENTS.md) — **仓库级 Agent 契约**：唯一入口指针、工程约定、红线（规范权威仍是 `wcc-skill/skill.md`）
-- [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) — **下一步开发计划（唯一排期依据）**：现行基线、P1.5→P4、双轨决策、附录 A 执行记录
-- [docs/P0-DISPOSITIONS.md](docs/P0-DISPOSITIONS.md) — P0 悬空项处置结论（`@wcc/shared` 冻结 / `wcc-hotreload` 环境限制）
-- [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) — **换机迁移清单**：clone → 依赖 → 回归验证，不入库的本地配置、必须单独带走的数据、1.31+ 环境就绪检查  
-- [docs/DEPLOYMENT-SHORTCUTS.md](docs/DEPLOYMENT-SHORTCUTS.md) — **部署快捷方式建议**：本机桌面实测、换机失效原因、三层入口模型、最小快捷方式集、`scripts/create-shortcuts.py` 用法与红线  
-- [docs/MAP-GENERATION-PLAN.md](docs/MAP-GENERATION-PLAN.md) — **地图生成与优化计划**：拼图/借鉴/随机/素材库四路线、人物摆放与触发器的代码凭据、Python+Lua+WE 外部支持、Warcraft 3 MCP Server、统一 IR 架构  
-- [docs/MAP-COMPILE-PIPELINE.md](docs/MAP-COMPILE-PIPELINE.md) — **编译链专项**：文本化/打包/编译三层澄清、`w2l`/`grill`/`jasshelper`/WE Save 命令证据、MCP Server 源码级档案、本机 1.26 版本硬约束、中间文件目录契约与 P0 验收  
-- [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md) — **Harness 实现记录**：调研→代码对账、脚本/工具注入、TUI、WC3 借鉴、验证命令  
-- [docs/HARNESS-REFERENCE.md](docs/HARNESS-REFERENCE.md) — Kiro / Strands Harness / Deep Agents 调研  
-- [docs/FEASIBILITY-REVIEW.md](docs/FEASIBILITY-REVIEW.md) — 独立 Harness + 二分 PR 方案可行性  
-- [docs/FORGE-INTEGRATION.md](docs/FORGE-INTEGRATION.md) — forge 生态与许可证边界  
-- [docs/ASSETS-GUIDE.md](docs/ASSETS-GUIDE.md) — 素材来源指引  
-- [PROJECT-PLAN.md](PROJECT-PLAN.md) — v1.1 桌面 Harness 计划  
-- [docs/DEVELOPMENT-NOTES.md](docs/DEVELOPMENT-NOTES.md) — 注意事项与落地状态  
-- [docs/workbuddy-research.md](docs/workbuddy-research.md) — WorkBuddy 调研  
-- [index.html](index.html) — 调研摘要页  
+> **索引只此一份**，不另建文档地图。裁决顺序：**代码事实 > 最新主线文档 > 历史文档（快照）**。
+
+**主线 / 现行依据**
+
+- [AGENTS.md](AGENTS.md) — **仓库级 Agent 契约**（`mode: always` 注入给每个 Agent）：唯一入口指针、工程约定、术语消歧、红线；规范权威仍是 `wcc-skill/skill.md`
+- [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) — **下一步开发计划（唯一排期依据）**：现行基线、P2 条件触发 → P4、B+A 双轨决策、附录 A 执行记录 / B 编号映射 / C IR 契约
+- [docs/MAP-COMPILE-PIPELINE.md](docs/MAP-COMPILE-PIPELINE.md) — 编译链专项、**`.wcc/ir/` 目录契约唯一权威**、三条硬约定落地状态、两阶段 P0 验收
+- [docs/MAP-GENERATION-PLAN.md](docs/MAP-GENERATION-PLAN.md) — 地图生成四路线、M0/M1/M2 子项目阶段、虚标清单
+- [docs/ASSETS-GUIDE.md](docs/ASSETS-GUIDE.md) — 素材来源、物编 ID 数据缺口与提取路径
+- [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md) — Harness 实现记录（文首有 P1 状态更新注记）
+- [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) — 换机迁移清单、回归验证、1.31+ 环境就绪检查
+- [docs/DEPLOYMENT-SHORTCUTS.md](docs/DEPLOYMENT-SHORTCUTS.md) — 部署快捷方式建议与红线
+- [wcc-skill/knowledge/wc3-object-ids.md](wcc-skill/knowledge/wc3-object-ids.md) — **物编 ID 字典骨架**（🔴 覆盖率 0，绝不编造四字码）
+
+**参考（结论有效，非排期）**
+
+- [docs/P0-DISPOSITIONS.md](docs/P0-DISPOSITIONS.md) — `@wcc/shared` 冻结 / `wcc-hotreload` 环境限制
+- [docs/HARNESS-REFERENCE.md](docs/HARNESS-REFERENCE.md)、[docs/FEASIBILITY-REVIEW.md](docs/FEASIBILITY-REVIEW.md)、[docs/FORGE-INTEGRATION.md](docs/FORGE-INTEGRATION.md) — 调研、二分 PR 可行性、forge 生态与许可证边界
+- [docs/DEVELOPMENT-NOTES.md](docs/DEVELOPMENT-NOTES.md)、[docs/workbuddy-research.md](docs/workbuddy-research.md)、[index.html](index.html) — 注意事项、调研摘要页
+- `wcc-skill/skill.md`（编程铁律唯一权威）、`wcc-skill/knowledge/*`、`wcc-skill/patterns/*` — 由 harness steering 按 front matter 条件注入
+
+**快照（不作进度依据）**
+
+- [PROJECT-PLAN.md](PROJECT-PLAN.md)、[PROJECT-PLAN-2.0.md](PROJECT-PLAN-2.0.md)、根 `wcc-ai-blueprint.md` / `wcc-architecture.md` / `wcc-skill.md`、[attic/](attic/) — 历史阶段产物，文首已加快照横幅；`项目状态与改进报告.md` 为本机未入库文件
 
 ### 如何贡献
 
@@ -191,38 +205,23 @@ AI会自动生成符合WCC规范的代码！
 - ✨ **新功能** - 添加新的系统模块
 - 📚 **文档** - 改进文档和示例
 - 🎨 **模式模板** - 添加新的任务模式（如护送、防守等）
-- 🗺️ **示例地图** - 创建演示用的战役地图
+- 🗺️ **示例地图** - 创建演示用的战役脚本与文本 IR（**二进制 `.w3x` 不入库**）
 
 ### 代码规范
 
-- 遵循 `wcc-skill/knowledge/conventions.md` 中的编码规范
-- 所有公共API必须有 EmmyLua 注解
-- 提交前运行测试（如果有）
+- 编程铁律、代码输出协议与违禁行为**唯一权威**是 `wcc-skill/skill.md`；`wcc-skill/knowledge/*.md` 由 harness steering 条件注入，作补充说明
+- 所有公共 API 必须有 EmmyLua 注解
+- 提交前至少跑 `npm test` 与 `npm run check`；改文档再跑 `npm run docs:check`；提交后 `npm run sync` 同步两端
 
-## 📖 文档
+## 📖 历史说明与路线图
 
-- [架构设计](wcc-architecture.md) - 系统架构详解
-- [AI执行蓝图](wcc-ai-blueprint.md) - AI编程规范
-- [编码规范](wcc-skill/knowledge/conventions.md) - 代码风格指南
-- [API参考](wcc-skill/knowledge/api-best-practices.md) - 魔兽API最佳实践
-
-## 🗺️ 路线图
-
-> 以下为本历史目录的旧路线图。**现行进度以新仓库为准**（Desktop MVP / Sidecar / lua-check / 完整 wcc-lib 已落地）。
-
-- [x] 核心安全沙箱 (wcc-core)
-- [x] 对话系统 (wcc-dialogue)
-- [x] 任务系统 (wcc-quest)
-- [ ] Boss战模板（新仓库已有 wcc-boss-fight）
-- [x] 刷怪池系统 (wcc-spawner)
-- [ ] 完整的示例战役
-- [ ] 社区模式模板库
-- [ ] **桌面 Harness**（见新仓库 apps/wcc-desktop）
+> 本 README 早期曾并列「历史目录 / 新仓库」两套叙事并附一份旧路线图。三处 `main` 现已统一为**同一份数据的三个副本**（`npm run sync` 同时同步），不再区分新旧仓库，旧路线图已移除。
+> **现行进度与排期只看 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)**；已完成阶段见其附录 A。
 
 ## 💬 社区
 
-- 新仓库：[Aurirlk/Wcc-deskTop](https://github.com/Aurirlk/Wcc-deskTop)
-- Issues / 讨论请到新仓库提交
+- GitHub <https://github.com/Aurirlk/Wcc-deskTop> 与 Gitee <https://gitee.com/wei-kaijie/Wcc-deskTop> 是**同一份数据的两个镜像**（`npm run sync` 同时同步，禁止只推一端 / 强推）。
+- Issues / 讨论在任一仓库提交即可。
 
 ## 📄 许可证
 

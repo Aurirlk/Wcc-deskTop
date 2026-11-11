@@ -146,7 +146,7 @@ MyMap.w3x
 | `docs/zh-cn/README.md` | 「`Obj` 和 `Lni` 之间可以**无损转换**」；`Slk` 默认有损但可关优化；Slk 含物编转 SLK、去未引用对象、内联 wts、mdx 压缩、**移除脚本注释 / 压缩变量名** |
 | `config.ini` | `[global] data = zhCN-1.24.4`；`[lni] export_lua = true`；`[slk] optimize_jass = true`；`data/` 下另有 `enUS-1.27.1` / `zhCN-1.32.8` |
 
-🟠 **`w2l mpq <War3路径>` 是隐藏彩蛋**：它能从游戏 MPQ 提取 `common.j` / `Blizzard.j` / 各 `xxxMetaData.slk` / `UnitEditorData.txt`（`cli/mpq.lua` 源码列出全部文件）——**这正好是 `ASSETS-GUIDE.md` 判定的「物编 ID 字典为零」的现成数据来源**，也顺手解决 `JassHelper` 需要的 `common.j / blizzard.j`。本轮**未运行**，标为待验。
+🟠 **`w2l mpq <War3路径>` 是隐藏彩蛋**：它能从游戏 MPQ 提取 `common.j` / `Blizzard.j` / 各 `xxxMetaData.slk` / `UnitEditorData.txt`（`cli/mpq.lua` 源码列出全部文件）——**这正好是 `ASSETS-GUIDE.md` 判定的「物编 ID 字典为零」的现成数据来源**，也顺手解决 `JassHelper` 需要的 `common.j / blizzard.j`。本轮**未运行**，标为待验。（2026-11-11：字典骨架已建于 `wcc-skill/knowledge/wc3-object-ids.md`，但覆盖率 0；逐条核实流程见该文 §6。）
 
 🔴 **许可红线**：GPL-3.0，**只能当外部进程调用**（`spawnSync` + 明确路径），源码绝不复制进 MIT 的 WCC（`FEASIBILITY-REVIEW.md` / `MAP-GENERATION-PLAN.md §9` 已定）。
 🔴 **版本红线**：`config.ini` 默认 `zhCN-1.24.4`，本机是 **1.26**；数据目录另有 `enUS-1.27.1`。**转换前必须确认数据版本匹配**，否则物编字段会被转义或忽略（`insider.md` 明写此风险）。

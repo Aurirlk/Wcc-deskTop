@@ -93,6 +93,8 @@
 
 WCC 现状（已实测）：`apps/wcc-desktop` 自动拉起 Sidecar + 健康看护；`server.js` 约 20 路由含 `/approval/*`、`/session/*`、`/workbench/*`、`/config`；`agent.js` 离线模式只返回 `steps`；`check`/`test` 是手动命令；`wcc-skill` 作为整体文档注入。
 
+> **⚠️ 表格「WCC 现状」列已过期（2026-11-11）**：该列是 2026-11-09 调研当时的快照。现在 `wcc-skill/` 为 **4 knowledge + 4 patterns**，由 steering 按 front matter **条件注入**（不再全量常驻）；hooks / scratch / spec 均已实现并接入产品。表格的「落地动作 / 优先级」判断继续有效，但「现状」列不要当现行事实读，现行口径见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) 附录 A。
+
 | # | 借鉴机制 | WCC 现状 | 落地动作 | 优先级 |
 |---|---|---|---|---|
 | 1 | **Kiro spec 三阶段** | `workbench` 已有 `bible / quests / dialogues / spawners` 结构化设定数据（≈ spec artifacts），但缺任务状态机 | 在 `.wcc/spec/{requirements,design,tasks}.md` 落盘可勾选任务，逐任务执行并回写状态；`offlinePlan` 从「打印 steps」升级为「生成 spec」 | 🔴 最高 |

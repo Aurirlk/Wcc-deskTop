@@ -121,7 +121,7 @@ WCC 目前的能力边界是**「写战役逻辑的 Lua」，不是「改地图�
 | 读 `.w3x` | 🔴 仅列文件名 | `map-sources.js:200-220 walkMaps` 只 `statSync` 取 path/bytes/mtime，`tools.js:346-363 local_maps_scan` 同样只列目录 |
 | 预置单位 / 装饰物 / 地形 | 🔴 无本地工具 | `tools.js:31-364` 无对应 `run()` |
 | GUI 触发器树 | 🔴 无 | 全仓无 `.wtg` / `.wct` 解析代码 |
-| 物编 ID 字典 | 🔴 零 | `docs/ASSETS-GUIDE.md:15` 已判定；`WCC_Objects.RegisterUnit` 只是内存表 |
+| 物编 ID 字典 | 🔴 零（数据条目）／骨架已建 | `docs/ASSETS-GUIDE.md:15` 已判定；`WCC_Objects.RegisterUnit` 只是内存表；2026-11-11 起见 `wcc-skill/knowledge/wc3-object-ids.md`（覆盖率仍 0） |
 | 区域 / 相机 / 出生点 | 🔴 靠人手工 | `skill.md:142-150` WE 前置清单 |
 | 端到端验证 | 🔴 无 | 仓库零 `.w3x`，无法跑「生成 → 进图 → 试玩」 |
 
@@ -197,6 +197,8 @@ AI 在 IR 层做「选哪个碎片、改哪个参数、裁剪哪块区域」，*
 ```
 
 🔴 **前置依赖**：这张分类字典 WCC 现在没有（`ASSETS-GUIDE.md:15` 判定物编 ID 字典为零，并建议补 `wcc-skill/knowledge/wc3-object-ids.md`）。这是借鉴流真正的第一块砖，而它同时也是修 AI 幻觉四字码的 ROI 最高项 —— 一举两得。
+
+> **2026-11-11 校正**：骨架文档 `wcc-skill/knowledge/wc3-object-ids.md` 已建（条件注入、区分官方 / 自定义 rawcode、写明核实流程），但**已核实条目仍为 0**。本节「字典没有」在「可用数据」意义上依然成立，借鉴流的前置依赖**并未解除**。
 
 **可用执行层**（🟠 官方 README）：
 - `YElwiddi/warcraft-3-mcp-server`：`wc3_list_units` / `wc3_list_doodads` / `wc3_read_terrain` / `wc3_delete_unit` / `wc3_replace_file`
@@ -306,7 +308,7 @@ WCC 已有半块砖：`tools.js:346-363 local_maps_scan` + `map-sources.js` 的 
 | `mpyq` | 纯 Python 读 MPQ（**只读**） | 🟠 国内镜像 200 已验证可达；功能细节未装未测 |
 | StormLib 绑定 / `node-stormlib` | **写回** MPQ（mpyq 不能写） | 🔴 需实测预编译二进制；`node-stormlib` 仍是 alpha |
 | `Pillow` / `numpy` | 仅在「确实要处理截图/小地图」时才需要 | 🔴 未装；借鉴流改走文件过滤后**大概率不需要** |
-| `wc3-object-ids.md` / `assets/paths.json` | 单位分类、建筑判定、四字码字典 | 🔴 零，`ASSETS-GUIDE.md §2` 已列为 ROI 最高项 |
+| `wc3-object-ids.md` / `assets/paths.json` | 单位分类、建筑判定、四字码字典 | 🔴 数据仍为零（骨架已建、覆盖率 0），`ASSETS-GUIDE.md §2` 已列为 ROI 最高项 |
 
 ⚠️ 本机 `storm.dll` 是**暴雪游戏自带 DLL**，与开源 StormLib 不是同一套 API，**不要假设可以直接拿来写 MPQ** —— 本轮未验证，标为待查。
 
