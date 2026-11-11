@@ -2,7 +2,7 @@
 id: agents
 mode: always
 priority: 100
-maxChars: 3600
+maxChars: 4200
 ---
 # WCC 仓库级 Agent 契约（AGENTS.md）
 
@@ -19,6 +19,8 @@ maxChars: 3600
 | 违禁行为、质量检查清单 | `wcc-skill/skill.md` §5 / §6 | **唯一权威** |
 | 条件注入的规范文档 | `wcc-skill/knowledge/*`、`patterns/*` | 由 `harness/src/steering.js` 按 front matter 条件选择 |
 | 当前开发主线与排期 | `docs/NEXT-DEVELOPMENT-PLAN.md` | **唯一排期依据** |
+| 项目开发目标（最终目标 / 当前状态） | `docs/NEXT-DEVELOPMENT-PLAN.md` 第一部分「开发目标」 | **唯一权威陈述**；README 只留一句话定位 + 指针，本文件不复制 |
+| 安装 / 启动 / 各入口使用说明 | `README.md`「使用指南」章节 | **唯一使用入口**，不另建手册 / 文档地图 |
 | 实现记录 / 编译链 / 地图计划 | `docs/HARNESS-IMPLEMENTATION.md` 等 9 篇 | 最新主线文档 |
 | 历史计划 | `PROJECT-PLAN*.md`、`项目状态与改进报告.md` | **快照，不作排期依据** |
 
@@ -68,5 +70,5 @@ maxChars: 3600
 - 本机 War3 1.26 只支持 JASS。**B+A 双轨已拍板**：1.31+ / Lua 主线，本机 1.26 只读保留、
   不升级不替换；`manifest.json` 记 `targetPatch` 与 `language`；1.31+ 环境由用户自备。
 - 现行基线：`npm test` 72/72、`npm run check` 15 files / 0 errors / 3 warnings、
-  CLI selftest 32/32、`npm run docs:check` 7 PASS。
+  CLI selftest 32/32、`npm run docs:check` 9 PASS。
   排期与执行记录见 `docs/NEXT-DEVELOPMENT-PLAN.md`（正文 + 附录 A）。

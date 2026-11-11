@@ -18,9 +18,29 @@
 
 # 第一部分 · 计划正文
 
-## 0. 现状
+## 0. 现状与开发目标
 
 `harness/` 已接入主产品 Agent Loop，`server.js` 暴露 `/harness/*` 并共用同一实例；产品侧**仍未接线**的是 7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering`（仅 CLI 与自测使用；产品化见 P3 / P4 纲要）。状态虚标与门禁空转的修复记录见附录 A.4。桌面 UI → Sidecar → Agent → 工具 → Lua 静态检查 → `war3map.lua` 脚本包这条链代码上可跑；**「一句话 → 真实模型生成 Lua → 检查 → 产出可试玩 `.w3x`」端到端未通**。硬断点在 `build-map.js` 只产文本脚本包、仓库零 `.w3x`、无地图数据层。
+
+### 开发目标（唯一权威陈述 · 2026-11-11 用户拍板）
+
+> 本小节是**项目开发目标的唯一权威陈述**。`README.md` 只保留一句话定位与指针，`AGENTS.md` 的唯一权威分工表只登记指针；历史 plan 里的定位、指标与路线图均为快照，不作目标依据。
+
+**最终目标**：让中文地图作者用自然语言描述战役需求，WCC 产出**可直接试玩的魔兽争霸3地图**——「一句话 → AI 生成战役 Lua → 静态检查与质量门禁 → 注入地图 → `.w3x` → 1.31+ 客户端试玩 → 日志回流修正」的端到端闭环。桌面 AI Harness（会话 / 工具 / 审批 / 上下文工程）是产品本体，`wcc-lib` 与 `wcc-skill` 是它自带的领域资产；Lua 脚本包、文本 IR、可核实物编数据都是通往这张地图的中间产物，不是终点。
+
+**当前状态（🔴 未达成，绝不虚报）**：闭环**未通**。硬断点在 `build-map.js` 只产文本脚本包、仓库零 `.w3x`、无地图数据层；真实模型 key 未配置、Electron 二进制缺失、本机 1.26 只支持 JASS。1.31+ 验证环境与真实 `.w3x` 由用户自备，且用户 2026-11-11 明确「本机魔兽资产至少 3 天后才有、当前网络/资源不支持下载」，阶段 A/B 保持条件触发封锁。**P2 两阶段 P0 全过之前，仓库内任何「已支持地图生成 / 已打通编译链」的说法都不成立**；两阶段验收命令见 `docs/MAP-COMPILE-PIPELINE.md`。
+
+**目标边界（做 / 不做）**：
+
+- 做：文本 IR 与 snapshot / diff / verify 闸门、脚本打包、Lua 静态检查、质量门禁回喂、上下文工程、示例资产、E3 Lua 注入、打包分发、真机 WE 验收。
+- 不做：重做地图编辑器、引入向量库、复制 GPL/AGPL 源码进 MIT 仓库、分发暴雪资产、升级或替换本机 1.26 游戏、AI 直接改二进制。完整红线见本文件「验收、提交与红线」章节与 `AGENTS.md`。
+- 目标用户与产品定义（零命令行、一次填国产模型 Key、双击即用）见 `docs/FEASIBILITY-REVIEW.md`；该文属参考层，其「开箱即用」描述是产品愿望，不是当前验收口径。
+
+**历史 2.0 五条产品愿望（冷启动 10 分钟 / 战役工作台 / Forge 可用 / 多提供商设置 / 记忆可见）已冻结**：保留在 `PROJECT-PLAN-2.0.md` 快照原文，**不作当前开发目标、不进当前排期、不作验收口径**；其中多提供商设置的现状见附录 A.2，其余不复活为待办。
+
+**使用文档分工**：`README.md` 是安装、启动、命令与端点的唯一入口，也是唯一文档索引；`docs/NEW-MACHINE-SETUP.md` 只管换机迁移与回归基线；`docs/DEPLOYMENT-SHORTCUTS.md` 只管桌面快捷方式；`examples/demo-campaign/README.md` 只管示例数据格式。不另建使用手册。
+
+**完成标志（与路线图一致）**：P2 = `docs/MAP-COMPILE-PIPELINE.md` 两阶段 P0 全过（真实 `.w3x` 读改回写 + WE Save / Test Map）；P3 = 新机器双击即用；P4 = 议题来自真实需求。逐阶段验收见本文件「路线图总览」与「验收、提交与红线」。
 
 ## 1. 现行基线（实测，非文档声称）
 
@@ -110,6 +130,7 @@ node harness/bin/wcc-harness.mjs demo       # EXIT=0
 node harness/bin/wcc-harness.mjs selftest   # 32/32
 node scripts/optional-electron.js           # 必须报 NOT usable，不得谎报 present
 npm run sync:check                         # 推前校验三处一致
+npm run docs:check                         # 文档口径门禁，9 PASS / 0 FAIL（9 条断言）
 ```
 
 P2 追加：三脚本负例单测、sha256 比对输出、WE / Test Map 截图与日志回流。
@@ -264,6 +285,50 @@ harness demo EXIT=0 · CLI selftest 27/27 · `npm run docs:check` 7 PASS / 0 FAI
 MCP `wc3_set_durable_script` / `w2l obj` adapter 接入，`set_script` 从未写过 `.w3x`，也不等于
 「脚本已进图」。合成字节块只证明 sha256 与字节比较逻辑。仓库仍零 `.w3x`；示例 3 章是文本样本、
 不是可玩战役；物编字典覆盖率仍 **0**。阶段 B2/B3/B4 与阶段 A 全部未解封。
+
+---
+
+## A.8 四维对齐与「开发目标 / 使用文档」定稿（2026-11-11 夜）
+
+**范围**：等 1.31+ 资源期间，做「事实 / 需求 / 文档现状 / 代码现状」四路只读调研与对齐，
+确定项目开发目标与唯一使用文档。**本轮不改业务逻辑、不碰阶段 A/B、不推进状态行**。
+
+**三个拍板决定（用户 2026-11-11 夜重新确认，与此前记录一致）**
+
+| # | 决定 | 落点 |
+|---|---|---|
+| 1 | **最终目标 = 端到端可玩地图**：「一句话 → 战役 Lua → 检查与门禁 → 注入地图 → `.w3x` → 1.31+ 试玩 → 日志回流修正」；桌面 Harness 是产品本体，`wcc-lib` / `wcc-skill` 是自带领域资产，文本 IR 与脚本包都是中间产物。**当前 🔴 未达成**，P2 两阶段 P0 全过前不宣称「已支持地图生成」 | 主计划第一部分 §0「开发目标（唯一权威陈述）」；README 文首一句话定位 + 指针；`AGENTS.md` §1 只登记指针 |
+| 2 | **历史 2.0 五条产品指标标为「冻结愿望」**，保留在快照原文，不作当前验收口径 | 主计划正文一句指针；不删除、不复活、不当待办 |
+| 3 | **使用文档就地扩写 `README.md`**，作为唯一使用入口与唯一索引，不新建手册、不制造第二数据源 | README「使用指南（唯一入口）」+「文档」唯一分层索引 |
+
+**四路调研查出的冲突与处置**
+
+| 冲突 | 处置 |
+|---|---|
+| 项目定位至少三种说法并存（README 的桌面 Harness / 战役级脚手架、历史 plan 的「自然语言→可玩战役」、参考层调研的 WorkBuddy 式桌面端），且全仓无一份开发目标权威陈述 | 在主计划 §0 建立唯一权威陈述，其余文档改为指针；**目标与当前状态分两行写**，避免目标陈述变成完成声明 |
+| 使用说明碎在 8 处以上；`README.md` 有空标题、「保存并运行游戏测试」虚标、Boss 示例 API 写错（`bossFight.Start` → 实为 `WCC_BossFight.New` + `:Start()`）、`npm run sidecar` 从仓库根启动必失败（`WCC_PROJECT_ROOT` 前置缺失），`build_map` 与 `/harness/*` 无任何可执行命令 | README 扩写到 383 行：全部 npm scripts、启动前置、模型配置、43 个端点的 curl 示例、`build_map` 真实命令、harness CLI、双端同步与故障排查；4 处硬错全修 |
+| 6 篇文档未进唯一索引；参考层调研仍把已快照的 `PROJECT-PLAN.md` 当计划主文档；**README 索引声称「文首已加校正注记」但 5 篇文件其实没有（虚标）** | 5 篇 md + `index.html` 真加 `2026-11-11 校正注记`（历史正文不动）；`MAP-GENERATION-PLAN.md` §6.1 的「旁路未接主循环」加推翻注记；门禁新增断言 7 专门防此类虚标 |
+| `AGENTS.md` §1 唯一权威分工表没有目标与使用文档的落点；加 2 行指针后 `doc.chars=3548`，距 `maxChars: 3600` 仅 52 字符 | 加 2 行指针；预算放宽到 **4200** 防再次截断；§2 工程约定与术语消歧块未动、未复述铁律 |
+| `docs:check` 只有 7 条断言，检查不到「注记虚标」与「使用文档退化」 | 新增断言 7 / 8 → **9 条**；活跃数值（`AGENTS.md` §3、`NEW-MACHINE-SETUP.md`）同步 7→9，附录 A 的历史当时值按防过期机制保留 |
+
+**全量回归（本机实测）**：`npm test` **72/72** · `npm run check` 15 files / 0 errors / 3 warnings ·
+harness demo EXIT=0 · CLI selftest 32/32 · `npm run docs:check` **9 PASS / 0 FAIL** ·
+`npm run build:desktop` 如实 EXIT=1 · steering `doc.chars=3548 < maxChars=4200`、
+`truncated=false`，尾部 / 双轨决策 / 目标指针 / 使用指针四项均注入 · `npm run sync` 推两端并三方校验。
+
+**环境事实（2026-11-11 夜实测）**：本机总内存 15,630 MB、当时可用仅 1,895 MB、CPU 16 核。
+`npm test` 在**连续多次运行**时曾触发 `FATAL ERROR: Committing semi space failed ... JavaScript heap out of memory`
+（测试子进程 exitCode 134 级联失败），原因是 `node --test` 默认按核数并发起进程；
+**单独跑一次完整通过 72/72 / fail 0 / EXIT=0**，与文档改动无关。已在 README「故障排查」写明处置
+（分别单跑各 suite 或 `--test-concurrency=2`）。验收期间 `agents-file.test.js` 还出现 sidecar 子进程
+「12 秒内未就绪」（`sidecar did not become ready in time`），但**手工启动同一 server 并 curl `/health` 立即成功**
+（`harnessWired:true` / `harnessAgentsFile:AGENTS.md`），说明是本机 spawn / 调度抖动而非产品缺陷。
+以上均为机器资源限制，**不修改测试脚本、不降低测试范围、不放宽任何断言**。
+
+**🔴 如实标注**：本轮**零业务代码改动**（只改 `scripts/check-doc-consistency.mjs` 这条门禁脚本）；
+最终目标仍 🔴 未达成，仓库零 `.w3x`、Electron 二进制缺失、真实模型 key 未配置；
+阶段 A/B 与物编 ID 核实按「本机魔兽资产至少 3 天后到位、当前网络不支持下载」保持封锁，**不按日期自动解封**；
+7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI 在产品侧仍 0 调用。状态行仍是「P2 进行中（条件触发）」。
 
 ---
 

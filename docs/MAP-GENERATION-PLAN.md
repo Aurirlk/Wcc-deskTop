@@ -389,6 +389,11 @@ GitHub API 实测（2026-11-09）：**12★ / MIT / TypeScript / 最后 push 202
 
 ### 6.1 分层
 
+> **⚠️ 表格「现状」列是 2026-11-09 调研快照（2026-11-11 校正）**：其中 L3「旁路未接主循环」**已被推翻**——
+> `createHarness()` 已于 P1 接入 `packages/wcc-sidecar/src/agent.js`，`server.js` 暴露 `/harness/*` 并共用同一实例。
+> L1 / L4 / L5 等外部工具与真机验证仍是 🔴 / 🟠，不要当现行事实读；
+> 现行口径见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) 附录 A。**表格单元格保留历史原文，未改写。**
+
 | 层 | 组件 | 现状 |
 |---|---|---|
 | L0 素材 | 本机 559 `.w3x` / 官方 `Scenario` 小图 / `war3.mpq` 的 SLK ID 表 | ✅ 有，零下载 |

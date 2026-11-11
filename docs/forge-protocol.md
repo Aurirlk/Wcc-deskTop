@@ -1,5 +1,15 @@
 # wc3-forge MCP 协议对齐（依据官方文档 2026-09-15）
 
+> **⚠️ 2026-11-11 校正注记（本文是 2026-09 沿革调研，非现行依据）**：
+> 本文提到的 `PROJECT-PLAN.md` / v1.1 已加「版本快照」横幅，**不作排期依据**；
+> 现行计划与**开发目标唯一权威陈述**见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，
+> **使用文档唯一入口**见 [README.md](../README.md) 的「使用指南」章节。
+> 文中的工具可用性、外部站点 / 协议、下一步建议均为撰写当时状态；现已拍板 **B+A 双轨**
+> （1.31+ / Lua 主线，本机 1.26 只读保留），最终目标是端到端可玩 `.w3x`（🔴 当前未达成）。
+> 本机魔兽资产至少 3 天后到位、当前网络不支持下载，阶段 A/B 保持 🔴 封锁。
+> 本文正文保留原样，不要当现行事实读。
+
+
 来源：https://stephenshorton.github.io/wc3-forge/docs/claude-code/ · README「MCP wire contract」
 
 ## 已验证事实（公开文档）

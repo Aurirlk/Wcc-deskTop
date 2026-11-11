@@ -115,6 +115,33 @@ add("6 保留项未入库",
   KEPT_UNTRACKED.flatMap((k) => tracked.some((f) => f === k || f.startsWith(k))
     ? [`被 git 跟踪：${k}`] : []));
 
+// 7. 参考层沿革调研必须真的带校正注记（README 索引声称「文首已加」时不能是虚标）
+const REFERENCE_DOCS = [
+  "docs/bilibili-research.md", "docs/map-sources-research.md", "docs/forge-protocol.md",
+  "docs/DEVELOPMENT-NOTES.md", "docs/workbuddy-research.md", "index.html",
+].flatMap(fileIfExists);
+const NOTE_MARK = "2026-11-11 校正注记";
+add("7 参考层调研校正注记齐备",
+  REFERENCE_DOCS.filter((f) => !fs.readFileSync(f, "utf8").includes(NOTE_MARK))
+    .map((f) => `缺少校正注记：${rel(f)}`));
+
+// 8. README 是唯一使用入口，关键命令不能被删（防止使用说明再次碎片化）
+const README_FILE = fileIfExists("README.md");
+const readmeText = README_FILE.length ? fs.readFileSync(README_FILE[0], "utf8") : "";
+const USAGE_KEYS = [
+  "使用指南（唯一入口）",
+  "WCC_PROJECT_ROOT=examples/demo-campaign npm run sidecar",
+  "/harness/state",
+  "harness CLI",
+  "故障排查",
+  "npm run sync:check",
+  "npm run docs:check",
+];
+add("8 README 唯一使用入口齐备",
+  README_FILE.length
+    ? USAGE_KEYS.filter((k) => !readmeText.includes(k)).map((k) => `README 缺少：${k}`)
+    : ["README.md 不存在"]);
+
 console.log("=== WCC 文档一致性门禁（npm run docs:check）===");
 let failed = 0;
 for (const c of checks) {

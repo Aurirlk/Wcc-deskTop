@@ -74,7 +74,7 @@ npm install
 npm test                 # 基线：72 tests pass
 npm run check            # 基线：15 files / 0 errors / 3 warnings
 node --test harness/test/harness.test.js     # 基线：32/32
-npm run docs:check                       # 文档口径一致性门禁（7 条断言）
+npm run docs:check                       # 文档口径一致性门禁（9 条断言）
 node harness/bin/wcc-harness.mjs demo       # 离线全链路，不需要 API key
 ```
 
@@ -180,6 +180,6 @@ PowerShell 实测 `war3.exe` / `game.dll` = **1.26.0.6401 经典版**，而 `REA
 - [ ] `git remote -v` 含 `origin`（GitHub）与 `gitee` 两个远端；`npm run sync:check` 报三处一致；带凭据的 `git ls-remote gitee main` 的 HEAD 与本地一致
 - [ ] `npm test` 72 pass、`npm run check` 15 files / 0 errors / 3 warnings
 - [ ] harness 自测 32/32、`demo` 全链路跑通（离线，无需 key）
-- [ ] `npm run docs:check` 7 PASS / 0 FAIL；`npm run build:desktop` 如实 EXIT=1（P3 未实现，不是打包成功）
+- [ ] `npm run docs:check` 9 PASS / 0 FAIL；`npm run build:desktop` 如实 EXIT=1（P3 未实现，不是打包成功）
 - [ ] 确认新机器 1.31+ 验证环境已就绪（本机 1.26 只读保留、不升级不替换）；P2 阶段 A/B 按环境就绪条件触发
 - [ ] 桌面入口已用 `scripts/create-shortcuts.py` 重建，且 `--list` 读回的目标全部指向本机真实路径
