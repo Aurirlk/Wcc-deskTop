@@ -142,7 +142,8 @@ node harness/bin/wcc-harness.mjs tui --static
 
 > ✅ **2026-11-10 P1 已接入**：`harness/` 不再是旁路层——`createHarness()` 已接进
 > `packages/wcc-sidecar/src/agent.js`（steering 条件注入、工具按需注入、budget 停止条件、
-> scratch 卸载、hooks 质量门禁与报错回喂），并由 `server.js` 暴露 `/harness/*` 供桌面与 TUI 共用同一实例。
+> scratch 卸载、hooks 质量门禁与报错回喂），并由 `server.js` 暴露 `/harness/*` 供**产品进程内**的桌面读取同一实例；
+> 独立 CLI TUI 在另一进程自建实例，不与产品共用状态。
 > 它仍保持**零 npm 依赖、不进 npm workspaces**，上面的 CLI 命令依旧可独立运行。
 > 实现细节见 [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md)，
 > P1 验收记录见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) 附录 A。

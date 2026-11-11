@@ -9,9 +9,16 @@
  *
  * Zero npm dependencies. All state lives under <projectRoot>/.wcc/
  * (already gitignored by the repository).
+ *
+ * P1.5 status (2026-11-11): the Sidecar imports this module and uses steering /
+ * injector / budget / scratch / hooks / dispatch. The 7-layer pipeline,
+ * prepareTurn(), per-turn spec injection, TUI and annotateSteering remain
+ * CLI / selftest surfaces only — NOT called by the product yet. Do not claim
+ * they are wired.
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createSteering, annotationFor, selectSteering, renderSteering } from "./steering.js";
 import { createSpecStore } from "./spec.js";
 import { createScratch } from "./scratch.js";
@@ -33,6 +40,10 @@ export * from "./middleware.js";
 export * from "./tool-inject.js";
 export * from "./scripts.js";
 export * from "./tui.js";
+
+// harness/src/index.js -> repo root. Gate targets are repo-relative; resolving
+// them only against projectRoot makes the quality gate skip for campaign dirs.
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export function createHarness({
   projectRoot = process.cwd(),
@@ -63,7 +74,7 @@ export function createHarness({
   const budget = createBudget({ maxTurns, maxTokens });
   const provider = resolveProvider(config);
   const injector = createToolInjector({ catalog, maxTools });
-  installDefaultHooks(hooks, { projectRoot: root });
+  installDefaultHooks(hooks, { projectRoot: root, repoRoot: REPO_ROOT });
 
   const pipeline = createPipeline({ trace: true });
   pipeline.use("planning", withPlanning(spec));

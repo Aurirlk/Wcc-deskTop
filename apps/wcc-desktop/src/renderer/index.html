@@ -75,6 +75,8 @@
           <div class="panel">
             <h3 class="panel-h">健康状态</h3>
             <pre id="home-health" class="code compact">加载中…</pre>
+            <h3 class="panel-h" style="margin-top:12px">Harness 状态（产品进程内单实例）</h3>
+            <pre id="harness-state" class="code compact">加载中…</pre>
           </div>
         </div>
       </section>
@@ -195,6 +197,7 @@
         <div class="panel">
           <h3 class="panel-h">Lua 静态检查</h3>
           <p class="muted">规则：禁 Wait / TriggerSleepAction / PolledWait；死亡 RemoveUnit；循环 Location；虚构 API。</p>
+          <p class="muted">直接调用 sidecar 的 <code>lua_check</code> 工具（不需要模型或 API key），结果写入下方。</p>
           <div class="row">
             <button id="btn-check" class="btn primary">对 src 运行检查</button>
           </div>

@@ -68,11 +68,37 @@ async function refreshStatus() {
     $("#project-path").textContent = st.projectRoot || "—";
     if (home) home.textContent = JSON.stringify(st, null, 2);
     updateHomeSteps(st);
+    await refreshHarnessState();
   } else {
     pill.textContent = "Sidecar 未连接";
     pill.className = "pill err";
   }
   await refreshForge();
+}
+
+/** WP7: renderer really consumes the already-exposed harness IPC (read-only). */
+async function refreshHarnessState() {
+  const out = $("#harness-state");
+  if (!out) return;
+  try {
+    const intent = "写 lua 并检查";
+    const [state, steering, tools] = await Promise.all([
+      window.wcc.harnessState(),
+      window.wcc.harnessSteering(intent, []),
+      window.wcc.harnessTools(intent),
+    ]);
+    const names = Array.isArray(tools?.selected) ? tools.selected : [];
+    out.textContent = [
+      `wired       : ${state?.wired === true}`,
+      `layers      : ${state?.layers?.length ?? "—"}`,
+      `AGENTS.md   : ${state?.agentsFile ?? "未注入"}`,
+      `steering    : ${(steering?.selectedIds || []).join(", ") || "—"}`,
+      `savedChars  : ${steering?.savedChars ?? "—"}`,
+      `tools (${names.length}) : ${names.slice(0, 8).join(", ") || "—"}`,
+    ].join("\n");
+  } catch (e) {
+    out.textContent = `Harness 状态不可用：${String(e.message || e)}`;
+  }
 }
 
 function updateHomeSteps(st) {
@@ -609,12 +635,17 @@ $("#btn-pick").addEventListener("click", async () => {
 $("#btn-forge-refresh")?.addEventListener("click", () => refreshForge());
 $("#btn-tree-refresh")?.addEventListener("click", () => refreshWorkbench());
 $("#btn-check").addEventListener("click", async () => {
-  $("#btn-check").disabled = true;
+  const btn = $("#btn-check");
+  const out = $("#check-out");
+  btn.disabled = true;
+  out.textContent = "正在运行 lua_check …";
   try {
-    gotoView("chat");
-    await sendChat("请对 src 运行 lua_check 并总结问题");
+    const r = await window.wcc.luaCheck("src");
+    out.textContent = r?.output || `检查无输出：${JSON.stringify(r)}`;
+  } catch (e) {
+    out.textContent = `检查失败：${String(e.message || e)}`;
   } finally {
-    $("#btn-check").disabled = false;
+    btn.disabled = false;
   }
 });
 $("#btn-bible-save")?.addEventListener("click", async () => {

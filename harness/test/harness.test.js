@@ -216,6 +216,19 @@ test("hooks: task.complete gate actually executes and blocks on errors", async (
   assert.equal(blocked.blocking, true);
 });
 
+test("WP8: task.complete gate resolves repo targets from a campaign projectRoot", async () => {
+  // Desktop default: a campaign dir with no repo-relative target paths.
+  // Before WP8 every target missed and the gate returned skipped:true.
+  const h = createHarness({ projectRoot: path.join(ROOT, "examples/demo-campaign") });
+  const r = await h.hooks.emit("task.complete", { taskId: "WP8", run: true });
+  const hook = r.results[0].result;
+  assert.equal(hook.executed, true);
+  assert.equal(hook.result.skipped, false, "gate must not silently skip");
+  assert.equal(typeof hook.result.errors, "number");
+  assert.equal(hook.result.errors, 0);
+  assert.equal(hook.verdict, "allow");
+});
+
 test("hooks: file.write blocks on errors but allows warning-only files", async (t) => {
   const d = tmp(t);
   const bus = createHookBus();

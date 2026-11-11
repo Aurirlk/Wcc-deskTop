@@ -5,6 +5,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createToolRegistry } from "./tools.js";
 import { createAgent } from "./agent.js";
 import { createForgeManager } from "./forge-mcp.js";
@@ -17,8 +18,12 @@ import { createSessionStore } from "./session-store.js";
 import { createHarness, listProviders, providerPatch } from "../../../harness/src/index.js";
 
 const PORT = Number(process.env.WCC_SIDECAR_PORT || 47840);
+// packages/wcc-sidecar/src -> repo root (three levels up). Used to locate the
+// ONE repo-level AGENTS.md; never copy it into a project dir (single source).
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const PROJECT = process.env.WCC_PROJECT_ROOT || process.cwd();
-const SKILL = process.env.WCC_SKILL_ROOT || "wcc-skill";
+const SKILL = path.resolve(REPO_ROOT, process.env.WCC_SKILL_ROOT || "wcc-skill");
+const AGENTS_FILE = path.join(REPO_ROOT, "AGENTS.md");
 
 let pendingApproval = null;
 
@@ -70,10 +75,15 @@ const sessionStore = createSessionStore({ projectRoot: PROJECT });
 sessionStore.newSession();
 
 // ONE harness instance shared by the agent and the /harness/* endpoints.
-// 双表面可以，双数据源不行: renderer + TUI both read this single object.
+// 双表面可以，双数据源不行: within THIS process the renderer reads this object.
+// The standalone CLI TUI runs in another process and builds its own instance;
+// it is not a second live state store for the product.
 const harness = createHarness({
   projectRoot: PROJECT,
   skillRoot: SKILL,
+  // WCC_PROJECT_ROOT is often a campaign dir (e.g. examples/demo-campaign)
+  // with no AGENTS.md. Always inject the single repo-root contract instead.
+  agentsFile: AGENTS_FILE,
   config: configStore.getRaw(),
   catalog: tools.list(),
   steeringBudget: 8000,
@@ -88,6 +98,12 @@ const agent = createAgent({
   getConfig: () => configStore.getRaw(),
   sessionStore,
 });
+
+/** Real runtime probe (WP6): not a hard-coded `true`. */
+function probeHarnessWired() {
+  const state = agent.harnessState();
+  return Boolean(state.wired && agent.harnessInstance === harness);
+}
 
 function json(res, code, body) {
   res.writeHead(code, {
@@ -142,8 +158,9 @@ const server = http.createServer(async (req, res) => {
       tools: tools.list().length,
       modelConfigured: model.configured,
       provider: model.provider,
-      harnessWired: true,
+      harnessWired: probeHarnessWired(),
       harnessLayers: harness.layers().length,
+      harnessAgentsFile: harness.steering.docs.some((d) => d.rel === "AGENTS.md") ? "AGENTS.md" : null,
       forgeConnected: Boolean(forge.connected),
     });
   }
@@ -370,8 +387,8 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // ---- P1-4: harness read surface. Renderer + TUI read the SAME harness
-  // instance created above; no duplicated state, no second source of truth.
+  // ---- P1-4: harness read surface. The renderer reads the single harness
+  // instance created above (one product-process state, no duplicated source).
   if (url.pathname === "/harness/state") {
     return json(res, 200, agent.harnessState());
   }
@@ -412,6 +429,19 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, await agent.dispatchTool(name, args));
     } catch (e) {
       return json(res, 400, { error: String(e.message || e) });
+    }
+  }
+
+  // WP7: the "检查" view displays a real checker result, not a chat forward.
+  // Reuse the SAME lua_check tool implementation the agent calls (no second
+  // checker, no model / API key required).
+  if (url.pathname === "/check") {
+    const subpath = url.searchParams.get("subpath") || "src";
+    try {
+      const result = await tools.dispatch("lua_check", { subpath }, { autoApprove: true });
+      return json(res, result.ok ? 200 : 500, { ...result, subpath });
+    } catch (e) {
+      return json(res, 500, { ok: false, output: String(e.message || e), subpath });
     }
   }
 

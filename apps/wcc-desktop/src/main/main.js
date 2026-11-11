@@ -260,6 +260,12 @@ ipcMain.handle("wcc:harness-steering", async (_e, intent, files) =>
       `&files=${encodeURIComponent((files || []).join(","))}`
   )
 );
+ipcMain.handle("wcc:harness-tools", async (_e, intent) =>
+  sidecarFetch(`/harness/tools?intent=${encodeURIComponent(intent || "")}`)
+);
+ipcMain.handle("wcc:lua-check", async (_e, subpath) =>
+  sidecarFetch(`/check?subpath=${encodeURIComponent(subpath || "src")}`)
+);
 ipcMain.handle("wcc:workbench-tree", async () => sidecarFetch("/workbench/tree"));
 ipcMain.handle("wcc:workbench-bible", async () => sidecarFetch("/workbench/bible"));
 ipcMain.handle("wcc:workbench-bible-set", async (_e, patch) =>

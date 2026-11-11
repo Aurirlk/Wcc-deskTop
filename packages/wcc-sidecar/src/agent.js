@@ -13,6 +13,8 @@
  * tools. `harness` is injectable so server.js and the renderer share ONE
  * instance (双表面可以，双数据源不行).
  */
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { EXPERTS } from "./config-store.js";
 import {
   createHarness,
@@ -23,12 +25,29 @@ import {
   STOP_REASONS,
 } from "../../../harness/src/index.js";
 
+// packages/wcc-sidecar/src -> repo root. server.js passes its own harness, but
+// a standalone createAgent() must still see the ONE repo-level contract even
+// when projectRoot points at a campaign dir with no AGENTS.md of its own.
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+
 // Role header only. The iron rules / output protocol / forbidden actions are
 // NOT duplicated here — wcc-skill/skill.md is the single authority and is
 // injected by steering (see AGENTS.md §1).
 const SYSTEM_ROLE = `你是艾泽拉斯织码者，WCC 魔兽争霸3战役开发助手。
 编程铁律、代码输出协议与违禁行为以本轮注入的 # Steering 段为准；
 未列出的规范文档视为未生效，不要凭记忆假设其内容。`;
+
+/** Runtime capability probe — replaces the previous hard-coded `wired: true`. */
+function harnessUsable(h) {
+  return Boolean(
+    h &&
+      typeof h.steering?.select === "function" &&
+      typeof h.injector?.select === "function" &&
+      typeof h.dispatch === "function" &&
+      typeof h.layers === "function" &&
+      h.layers().length > 0
+  );
+}
 
 export function createAgent({
   tools, projectRoot, skillRoot, logger, getConfig, sessionStore,
@@ -43,6 +62,7 @@ export function createAgent({
   const h = harness || createHarness({
     projectRoot: projectRoot || process.cwd(),
     skillRoot: skillRoot || undefined,
+    agentsFile: path.join(REPO_ROOT, "AGENTS.md"),
     catalog: tools?.list?.() || [],
     steeringBudget,
     maxTools,
@@ -381,7 +401,7 @@ export function createAgent({
   /** Single source of truth for /harness/* endpoints (P1-4). */
   function harnessState() {
     return {
-      wired: true,
+      wired: harnessUsable(h),
       layers: h.layers(),
       steering: h.lastSteering
         ? {

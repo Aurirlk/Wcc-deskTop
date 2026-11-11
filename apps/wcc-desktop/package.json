@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
-    "build": "echo 'package with electron-builder later'"
+    "build": "node -e \"console.error('[wcc-desktop] electron-builder packaging is P3 and is NOT implemented. See docs/NEXT-DEVELOPMENT-PLAN.md'); process.exit(1)\""
   },
   "optionalDependencies": {
     "electron": "^33.0.0"

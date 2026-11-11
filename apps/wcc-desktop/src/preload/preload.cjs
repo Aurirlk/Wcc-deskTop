@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld("wcc", {
   providers: () => ipcRenderer.invoke("wcc:providers"),
   harnessState: () => ipcRenderer.invoke("wcc:harness-state"),
   harnessSteering: (intent, files) => ipcRenderer.invoke("wcc:harness-steering", intent, files),
+  harnessTools: (intent) => ipcRenderer.invoke("wcc:harness-tools", intent),
+  luaCheck: (subpath) => ipcRenderer.invoke("wcc:lua-check", subpath),
   workbenchTree: () => ipcRenderer.invoke("wcc:workbench-tree"),
   workbenchBible: () => ipcRenderer.invoke("wcc:workbench-bible"),
   workbenchBibleSet: (patch) => ipcRenderer.invoke("wcc:workbench-bible-set", patch),

@@ -37,10 +37,24 @@ export function defaultCheckRunner(projectRoot) {
  */
 export function defaultGateRunner(projectRoot, {
   targets = ["examples/demo-campaign/src", "wcc-lib"],
+  repoRoot = null,
 } = {}) {
   return async function runGate() {
-    const root = projectRoot || process.cwd();
-    const paths = targets.map((t) => path.resolve(root, t)).filter((p) => fs.existsSync(p));
+    const root = path.resolve(projectRoot || process.cwd());
+    const fallback = repoRoot ? path.resolve(repoRoot) : null;
+    // Targets are expressed relative to the REPO root. When the product points
+    // at a campaign dir (e.g. examples/demo-campaign) they do not resolve under
+    // projectRoot, which used to make the gate silently skip. Resolve against
+    // the repo root as a fallback so the checker really runs (WP8).
+    const candidates = [path.resolve(root, "src")]; // the active project's own Lua
+    for (const t of targets) {
+      candidates.push(path.resolve(root, t));
+      if (fallback) candidates.push(path.resolve(fallback, t));
+    }
+    const paths = [];
+    for (const p of candidates) {
+      if (fs.existsSync(p) && !paths.includes(p)) paths.push(p);
+    }
     if (!paths.length) {
       return { ok: true, skipped: true, errors: 0, warnings: 0, issues: [], report: "no lua targets found; gate skipped" };
     }
@@ -99,13 +113,13 @@ export function createHookBus({ logger = () => {}, strict = false } = {}) {
 
 /** Install the built-in gates. `runCheck` / `runGate` are injectable for tests. */
 export function installDefaultHooks(bus, {
-  projectRoot, runCheck, runGate,
+  projectRoot, repoRoot = null, runCheck, runGate,
   blockOnIssues = true,
   gateOnTaskComplete = true,
 } = {}) {
   const root = projectRoot || process.cwd();
   const check = runCheck || defaultCheckRunner(root);
-  const gate = runGate || defaultGateRunner(root);
+  const gate = runGate || defaultGateRunner(root, { repoRoot });
   const registered = [];
 
   registered.push(bus.on("file.write", async ({ path: rel }) => {

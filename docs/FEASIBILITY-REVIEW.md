@@ -50,7 +50,7 @@
 | Renderer | 已有 health pill（`model✓`/`forge✓`）、onboarding 引导清单、settings 页（`configGet/configPost`）、forge 会话发现与连接 UI、对话、workbench |
 | Sidecar | `server.js` 约 20 个路由：`/health` `/tools` `/approval/*` `/chat/stream` `/chat` `/history` `/session/*` `/forge/*` `/config` `/experts` `/workbench/*` |
 | 模型 | 默认 `deepseek-chat`（国产、OpenAI 兼容）；`config-store.js` + `onboarding.js` 已提供配置落盘与引导 |
-| 领域层 | `wcc-lib` 11 个 Lua 模块 / 1848 行 + `wcc-skill` + `lua_check`；`npm run check` 13 文件 / 0 errors / 3 warnings，`npm test` 57 pass（撰写当时 13 模块 / 27；现行基线见主计划 §1） |
+| 领域层 | `wcc-lib` 11 个 Lua 模块 / 1848 行 + `wcc-skill` + `lua_check`；`npm run check` 13 文件 / 0 errors / 3 warnings（撰写当时 @wcc/sidecar 25 + @wcc/lua-check 2；现行基线见 `docs/NEXT-DEVELOPMENT-PLAN.md` 第一部分现状，60 pass） |
 | forge 客户端 | `forge-mcp.js` 双 transport（stdio `<exe> --mcp` + TCP lockfile NDJSON JSON-RPC） |
 | 依赖 | `npm install` 完成，61 顶层包；Electron 45.2.3 包与二进制均就位 |
 
@@ -60,7 +60,7 @@
 
 | 级别 | 卡点 | 证据 |
 |---|---|---|
-| 🔴 | **无打包配置** | `apps/wcc-desktop/package.json` 的 `build` = `echo 'package with electron-builder later'`；全仓 `find` 无 `electron-builder` / `forge.config` / `.nsi` → **没有可分发 exe** |
+| 🔴 | **无打包配置** | `apps/wcc-desktop/package.json` 的 `build` 撰写当时为 `echo 'package with electron-builder later'`（**2026-11-11 起改为明确报错「P3 未实现」、EXIT=1，不再假成功**）；全仓 `find` 无 `electron-builder` / `forge.config` / `.nsi` → **仍没有可分发 exe** |
 | 🔴 | **启动器依赖本机特定路径** | `wcc-启动器.bat` 硬编码 `C:\Users\Administrator\.workbuddy\binaries\node\versions\22.22.2-6`，且需手选菜单 `[4]` → 换机即断、也不是「点击即用」 |
 | 🟠 | **Electron 版本声明不一致** | 桌面包声明 `electron ^33.0.0`，实际装的是 **45.2.3**；`main.js` 用的 API 都是 33 就有的，理论兼容，但**未实测** `npm run dev:desktop` |
 | 🟠 | **模型 Key 仍需用户填** | 零配置做不到；只能做到「一次填国产 Key」 |

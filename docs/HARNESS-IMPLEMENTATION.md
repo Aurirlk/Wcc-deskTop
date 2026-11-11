@@ -254,7 +254,7 @@ turn.start hook
 
 | 文档 | 本文带来的变化 |
 |---|---|
-| `FEASIBILITY-REVIEW.md` 论断 A | 「🟠 工程待补」中**上下文工程与质量门禁**这一块已补上并验证；**打包分发红线仍在**（`build` 仍是 echo 占位、启动器仍硬编码 node） |
+| `FEASIBILITY-REVIEW.md` 论断 A | 「🟠 工程待补」中**上下文工程与质量门禁**这一块已补上并验证；**打包分发红线仍在**（`build` 撰写当时是 echo 占位，2026-11-11 起改为明确报错「P3 未实现」；启动器仍硬编码 node） |
 | 论断 B | 代码二分照旧；`harness/` 是**第三个物理隔离目录**（不在 workspaces、不进 lock、不进 forge），与「两条提交线」原则一致 |
 | 论断 C（C2 优先） | `forge_*` 默认不注入 + 按需 external 审批，是 C2 的具体实现；**C1（给 forge 提 PR）仍未做，也未发任何 Issue** |
 | `FORGE-INTEGRATION.md` L2 | `createHarness()` / `dispatch()` 已是可 import 的库形态，为独立 stdio MCP server 铺好路；**server 本身仍未写** |
@@ -286,7 +286,7 @@ node --test harness/test/harness.test.js
 :: 15 tests / 15 pass / 0 fail
 
 npm test
-:: 撰写当时 @wcc/sidecar 25 + @wcc/lua-check 2 = 27；现行基线见主计划 §1（57 pass）
+:: 撰写当时 @wcc/sidecar 25 + @wcc/lua-check 2 = 27；现行基线见 docs/NEXT-DEVELOPMENT-PLAN.md 第一部分现状（60 pass）
 
 npm run check
 :: wcc-lua-check: 13 files, 0 issues, ok=true
