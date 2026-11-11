@@ -4,6 +4,10 @@ mode: manual
 keywords: boss,阶段,技能循环
 priority: 30
 ---
+> **⚠️ require 消歧（2026-11-11）**：本文示例里的 `require("src.*")` 是 **WCC 源码组织方式**，
+> 由 `build-map.js` 内联成单文件 `war3map.lua`（自造 `__wcc_require`）。WC3 原生 Lua **没有 require**，
+> **不要在 World Editor 触发器里写 `require("src.main")`**；进图请用 `dist/build/war3map.lua` 全文。
+
 # Boss战模式模板 (Boss Fight Pattern)
 
 > 本文档定义了魔兽争霸3 Boss战的标准实现模式。

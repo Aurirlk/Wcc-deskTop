@@ -1,5 +1,7 @@
 # WCC 独立 Harness + 二分 PR 方案 · 可行性分析
 
+> **⚠️ 历史快照（2026-11-11 标注）**：下面这段「以 Gitee 最新提交为基准合并 GitHub 原分叉」是 11-10 当日叙事，**不是现行口径**。现行：本地 / GitHub / Gitee 三处 `main` 是**一个逻辑数据源 + 两个镜像**，不再区分主仓库 / 镜像 / 谁更新；每次推送用 `npm run sync`，只校验用 `npm run sync:check`。见 [AGENTS.md](../AGENTS.md)。
+>
 > **2026-11-10 仓库状态补记（当日二次校正）**：本文撰写时「未 git commit / 未推送 / origin=gitclone.com」均为当时状态；当天成果已全部提交（`7fe0922`..`ef5a9be`，7 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开）。**当日稍后已完成三处同步**：以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，本地 `main`、GitHub `Aurirlk/Wcc-deskTop`、Gitee `wei-kaijie/Wcc-deskTop` 的 `main` 均已对齐（合并提交 `d8ccdfb`）；GitHub **不再**停在 `12b9169`。
 > 此后仓库持续开发，**最新 HEAD 一律以 `git log -1` / `git ls-remote` 为准，本文不再跟踪具体 commit**；开发主线与排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，换机说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
@@ -48,7 +50,7 @@
 | Renderer | 已有 health pill（`model✓`/`forge✓`）、onboarding 引导清单、settings 页（`configGet/configPost`）、forge 会话发现与连接 UI、对话、workbench |
 | Sidecar | `server.js` 约 20 个路由：`/health` `/tools` `/approval/*` `/chat/stream` `/chat` `/history` `/session/*` `/forge/*` `/config` `/experts` `/workbench/*` |
 | 模型 | 默认 `deepseek-chat`（国产、OpenAI 兼容）；`config-store.js` + `onboarding.js` 已提供配置落盘与引导 |
-| 领域层 | `wcc-lib` 13 个 Lua 模块 + `wcc-skill` + `lua_check`；`npm run check` 13 文件 0 issues，`npm test` 27 pass |
+| 领域层 | `wcc-lib` 11 个 Lua 模块 / 1848 行 + `wcc-skill` + `lua_check`；`npm run check` 13 文件 / 0 errors / 3 warnings，`npm test` 57 pass（撰写当时 13 模块 / 27；现行基线见主计划 §1） |
 | forge 客户端 | `forge-mcp.js` 双 transport（stdio `<exe> --mcp` + TCP lockfile NDJSON JSON-RPC） |
 | 依赖 | `npm install` 完成，61 顶层包；Electron 45.2.3 包与二进制均就位 |
 

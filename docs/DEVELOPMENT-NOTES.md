@@ -31,7 +31,7 @@ attic/novel-workflow 已迁出
 5. **审批**：默认 `WCC_AUTO_APPROVE=0`；桌面轮询 `/approval/pending`。生产勿默认自动放行写文件。  
 6. **wc3-forge 未接入**：`forge_status` 为占位；改图能力依赖本机安装 Forge 并保持编辑器打开（后续 MCP 客户端）。  
 7. **模型**：未配置 `WCC_MODEL_BASE_URL`/`WCC_MODEL_API_KEY` 时为**离线规划**，只给步骤不自动写盘。  
-8. **Lua 铁律**：生成代码必须过 `lua_check`；游戏内仍需 WE 中 `require("src.main")`。  
+8. **Lua 铁律**：生成代码必须过 `lua_check`；进图用 `dist/build/war3map.lua` 全文粘贴到地图脚本（WC3 原生 Lua 无 `require`，**不要**在 WE 触发器里写 `require("src.main")`；2026-11-11 校正）。  
 9. **法律**：不分发暴雪资源；`wcc-lib` 仅脚本工具链。  
 10. **demo 工程**：默认项目根指向 `examples/demo-campaign`，其中 `require` 路径按 WE 实际 `src/lib` 调整。
 

@@ -2,7 +2,7 @@
 
 > 2026-11-10 · 本文是**建议 + 本机实测记录**，不是「已完成部署」的声明。
 > 标记约定：✅ 本机实测或已落地 ｜ 🟠 建议 / 尚未在新机器验证 ｜ 🔴 未做 / 禁止事项。
-> 配套阅读：[NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md)（迁移清单）、[MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md)（目标补丁决策）。
+> 配套阅读：[NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md)（迁移清单）、[MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md)（双轨决策，已拍板）。
 
 ---
 
@@ -190,7 +190,7 @@ python scripts/create-shortcuts.py --list
 | 🔴 | **不要把「改注册表桌面路径」当成部署步骤**。本机改为 `D:\Desktop` 是当初整理电脑的个体行为，新机器用系统默认即可。 |
 | 🔴 | **不捆绑 `wc3-forge.exe`**（GPL-3.0）到 MIT 仓库；快捷方式只指向外部安装，且缺失时跳过。 |
 | 🟠 | 用户级 `WC3FORGE_EXE` 需重新登录 / 重启资源管理器才在当前 shell 可见；本机多次实测读不到，脚本因此跳过是可接受行为。 |
-| 🟠 | `--with-war3` 只有在目标补丁决策后才该启用：本机是 **1.26.0.6401（只跑 JASS）**，而仓库资产是 Lua 1.31+，见 `MAP-COMPILE-PIPELINE.md` §5。 |
+| 🟠 | **目标补丁已拍板双轨**；`--with-war3` 仍须等用户自备的 1.31+ 验证环境就绪后才启用。本机是 **1.26.0.6401（只跑 JASS）**，只读保留、不升级不替换，见 `MAP-COMPILE-PIPELINE.md` §5。 |
 | 🟠 | 图标优先用系统 DLL；指向已卸载 exe 的图标会显示成白板。 |
 | 🟠 | `IShellLinkW` vtable 直调属于系统级 API，Windows 大版本更新后应重跑 `--dry-run` + `--list` 自检；脚本已把每个 HRESULT 转成可读报错，不会静默失败。 |
 
@@ -206,14 +206,14 @@ python scripts/create-shortcuts.py --list
 | 在**新机器**实际跑一遍 §6 流程 | 🔴 未做（换机尚未发生） |
 | 改动本机桌面 / 注册表 / 生成到真实桌面 | 🔴 未做 |
 | 把 `.lnk` 或任何本机绝对路径提交进仓库 | 🔴 未做，且不建议 |
-| 云端同步 | ✅ 2026-11-10 已把 Gitee 侧 7 个提交推送到 **Gitee 私有仓库** `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不对外公开）；✅ 当日晚间完成三处合并同步，**GitHub 官方仓库已与 Gitee、本地 `main` 对齐**（`d8ccdfb`，后续以 `git log -1` 为准） |
+| 云端同步 | ✅ 三处 `main` 为**一个逻辑数据源 + 两个镜像**，`npm run sync` 每次推两端并校验一致；最新 HEAD 以 `git log -1` 为准（11-10 的合并叙事属历史快照，不再区分谁对齐谁） |
 
 ---
 
 ## 10. 关联文档
 
 - [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) — clone → 依赖 → 回归；不入库的配置与必须带走的数据
-- [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md) — 目标补丁（1.26 / 1.31+ / 双轨）决策，决定 `--with-war3` 是否该启用
+- [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md) — 双轨决策（已拍板：1.31+ / Lua 主线）与 `--with-war3` 启用条件
 - [HARNESS-IMPLEMENTATION.md](HARNESS-IMPLEMENTATION.md) — 启动器菜单 `[5]` 背后的 harness CLI 与脚本 manifest
 - `wcc-启动器.bat` — L0 唯一可移植入口
 - `scripts/create-shortcuts.py` — 本文建议的生成器实现

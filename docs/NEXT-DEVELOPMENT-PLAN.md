@@ -1,287 +1,238 @@
-# WCC 下一步开发计划（2026-11-10）
+# WCC 下一步开发计划
 
-> **状态：计划稿，未开工。** 本文只做规划，不含任何"已完成"声明。
+> **状态：P1.5 进行中；P0 / P1 已归档见附录 A。**
 >
-> **基线**：`git HEAD = d8ccdfb`，本地 `main` / GitHub `main` / Gitee `main` 三处一致。
-> **主线来源**：Gitee 侧 7 个提交（`7fe0922` … `ef5a9be`，11-09 晚 ~ 11-10 凌晨），即 `harness/`、`docs/` 9 篇新文档、`wcc-skill/` front matter、`vendor/`、`scripts/create-shortcuts.py`。
-> **裁决顺序（冲突时以此为准）**：`代码事实 > 最新主线文档 > 历史文档（快照）`。
+> **基线**：HEAD 以 `git log -1` 为准。本地 `main`、GitHub `origin/main`、Gitee `gitee/main` 是**同一份数据的三处副本**（单一逻辑数据源 + 两个镜像），不再区分主仓库 / 镜像 / 谁更新；每次推送用 `npm run sync`，只校验用 `npm run sync:check`。
+> **裁决顺序**：代码事实 > 最新主线文档 > 历史文档（快照）。
+> **证据等级**：✅ 本机实测 / 🟠 官方文档或二手 / 🔴 未实现未验证。写 ✅ 必须附可复现命令与输出。
+
+## 防过期机制（本文件硬约束）
+
+1. **物理分区**：全文只分「第一部分 计划正文（只写未做的）」与「附录 A 执行记录（只写已做的）」。正文禁止出现「已完成 / ✅」；附录禁止出现「待办 / 下一步」。
+2. **状态行只描述当前阶段**，禁止全局性的「未开工」断言。
+3. **阶段推进只允许两个动作**：把该阶段任务表整块移入附录 A（附实测命令与输出）→ 改状态行一词。不得就地改口吻、不得在正文里追加完工声明。
+4. **不跟踪具体 commit**：基线不写 hash；历史 commit 只出现在附录 A 的记录里。
+5. **指针只用文档级链接**，不带 `§号`；涉及本文件其他部分时用稳定标题（如「见附录 C」）。
 
 ---
 
-## 0. 一句话结论
+# 第一部分 · 计划正文
 
-**项目不缺 AI，也不缺代码——缺的是「把已经写好的 Harness 能力接进主产品」和「一个能进图的地图数据层」。**
+## 0. 现状
 
-- 最新主线已交付可独立运行的 `harness/` 层（12 模块 + CLI + 15 自测，离线全链路通过），但**全仓没有任何非 harness 文件 import 它**，`agent.js` 仍在全量注入 skill、全量挂工具、`guard < 8` 硬循环。→ 第一优先级是接线，不是再写新模块。
-- 所有地图相关文档都指向同一个未拍板的前置决策：**目标补丁选 1.26 / 1.31+ / 双轨**。这个不定，阶段 2 全部会返工。
-- 本机 Electron 二进制缺失、无模型 key 时 Agent 只回文本、`build_map` 只产 `war3map.lua` 而不产 `.w3x`、本机 War3 1.26 只支持 JASS——**端到端目前跑不通，必须如实标注**。
+`harness/` 已接入主产品 Agent Loop，`server.js` 暴露 `/harness/*` 并共用同一实例；但产品侧仍有一批能力未接线（pipeline / spec 每轮注入 / TUI）与状态虚标（见 §4）。桌面 UI → Sidecar → Agent → 工具 → Lua 静态检查 → `war3map.lua` 脚本包这条链代码上可跑；**「一句话 → 真实模型生成 Lua → 检查 → 产出可试玩 `.w3x`」端到端未通**。硬断点在 `build-map.js` 只产文本脚本包、仓库零 `.w3x`、无地图数据层。
 
----
+## 1. 现行基线（实测，非文档声称）
 
-## 1. 基线：实测证据（不是文档声称，是本机跑出来的）
-
-| 命令 / 检查 | 实测结果 | 判定 |
-|---|---|---|
-| `node --test harness/test/harness.test.js` | 15/15 pass，0 fail，277ms | ✅ |
-| `node harness/bin/wcc-harness.mjs demo` | EXIT=0，6 段离线全链路（steering 省 39,373 字符 → spec → scratch → hooks → 工具 10/29 → 预算 → TUI） | ✅ |
-| `node harness/bin/wcc-harness.mjs tui --static` | EXIT=0，非 TTY 静态渲染 | ✅ |
-| `npm test`（根） | 27/27 pass（sidecar 25 + lua-check 2）；**不含 harness 的 15 个** | ⚠️ |
-| `npm run check` | `13 files, 3 issues, ok=true`（3 个均 WARNING；`check.js:165` 只把 error 计入 ok） | ⚠️ |
-| `npm run dev:desktop` | **EXIT=1**：`Electron failed to install correctly` | 🔴 |
-| `npm run build:desktop` | EXIT=0，但仅 `echo 'package with electron-builder later'` | 🔴 占位 |
-| sidecar `/health` | `{"ok":true,"tools":20,"modelConfigured":false,"forgeConnected":false}` | ⚠️ |
-| `POST /chat`（无 key） | 返回离线计划文本，**不生成 Lua / 不调工具 / 不检查** | 🔴 断点 |
-| `POST /build`（空项目） | `missing:["src.main"]` 仍写出 584 字节 `war3map.lua` 并**返回成功** | 🔴 假成功 |
-| 全仓 `.w3x` / `.w3m` | **零个** | 🔴 |
-
-**代码事实**：桌面 UI → IPC → Sidecar HTTP/SSE → Agent Loop → 20 个工具 → 审批 → `lua_check` → `build_map` 这条链**代码上全部接线且真实实现**（`apps/wcc-desktop` 不是静态壳，`renderer/app.js` 654 行全是动态调用）。断点是环境、模型与产物层，不是接线层。
-
----
-
-## 2. 文档分层（按"最新文件为主，其他为补充和快照"）
-
-### 2.1 主线依据（现状 + 下一步的权威）
-
-| 文件 | 作用 |
+| 命令 / 检查 | 实测结果 |
 |---|---|
-| `README.md` | 项目定位、模块结构、当前文档索引；P1 后 `harness/` 已接入 `agent.js`，不再是旁路层 |
-| `docs/HARNESS-IMPLEMENTATION.md` | **实现记录（不是规划稿）**；`§7 L259-271` 是全项目唯一未被推翻的下一步清单 |
-| `docs/MAP-COMPILE-PIPELINE.md` | **`§5.3 / §11` 第 0 号决策（目标补丁）**；`§7` 两阶段 P0 验收 |
-| `docs/MAP-GENERATION-PLAN.md` | `§7 L436-443` P0/P1/P2 与验收标准；`§8-10` 红线 |
-| `docs/ASSETS-GUIDE.md` | 素材/领域数据缺口盘点（`§0` 缺口表、`§5` 最小行动清单） |
-| `docs/FEASIBILITY-REVIEW.md`、`docs/FORGE-INTEGRATION.md` | 打包与许可证红线（两份文首"状态更新"已划出继续有效部分） |
-| `docs/NEW-MACHINE-SETUP.md`、`docs/DEPLOYMENT-SHORTCUTS.md` | 换机清单、部署红线、回归基线 |
-| `docs/HARNESS-REFERENCE.md` | 分析快照；**`§7` 已主动作废**（`L146-151`「已被实现稿接管」） |
-| `harness/**`、`wcc-skill/**`（front matter）、`vendor/`、`scripts/create-shortcuts.py` | 代码事实，是文档的最终裁决者 |
+| `npm test` | 57 pass / 0 fail（sidecar 35 + lua-check 2 + shared 1 + harness 19） |
+| `npm run check` | 13 files / 0 errors / 3 warnings / ok=true（warning 为复核提示，不阻断） |
+| `node harness/bin/wcc-harness.mjs demo` | EXIT=0，离线全链路 |
+| `node harness/bin/wcc-harness.mjs selftest` | 19/19 |
+| `node scripts/optional-electron.js` | `electron NOT usable: dist folder missing`，`dev:desktop` 起不来 |
+| `npm run build:desktop` | 当前为 `echo` 占位，**属假成功**，见 §4 WP7 |
+| 全仓 `.w3x` / `.w3m` | 零个 |
+| 真实模型 key | 未配置；无 key 时 `/chat` 走 `offlinePlan()` 只回文本、零 tool_calls |
+| `/health` 的 `harnessWired` | 硬编码 `true`，非真实探测，见 §4 WP6 |
 
-### 2.2 补充 / 快照（有价值，但**不得当作进度依据**）
+桌面默认 `PROJECT = examples/demo-campaign`，该目录无 `AGENTS.md`，而 `server.js` 建 harness 时未传 `agentsFile` → **桌面默认场景未注入仓库契约**。
 
-| 文件 | 只取这些 | 不取这些 |
-|---|---|---|
-| `PROJECT-PLAN-2.0.md` | `§1` 2.0 五个可验收目标、`§2` 7 页 IA、`§5` 4 个专家、`§6` 战役圣经 JSON | `§8` 立即执行顺序（22 项**全部未勾选**，报告明写「未开工」） |
-| `PROJECT-PLAN.md` | `§2.3` 8 步用户旅程、`§5.3-5.5` 权限/记忆/模型路由策略、`§七` 六条 ADR、`§八` 版权红线原始出处 | `§十 Do Now`（全部过期）、React/Rust/`wcc-map/` 选型（已降级，目录不存在） |
-| `项目状态与改进报告.md` | `§4` 14 项问题清单、`§6` forge 冒烟 9 步、`§9` 风险登记簿 | `§10 Do Now`；且本文件**未被 git 跟踪**，从未进入版本历史，是纯快照 |
-| `wcc-skill/skill.md` 正文 | 四条编程铁律、输出协议、违禁行为、7 项质量检查——**仍生效** | 无（`2026-07-09` 内容，被主线当既有资产引用，未被复述） |
-| `wcc-ai-blueprint.md` / `wcc-architecture.md` / `wcc-skill.md` | v1.0 愿景参考 | 不作为排期依据（已被 `wcc-skill/skill.md` 吸收超越） |
-| `docs/DEVELOPMENT-NOTES.md` 等 5 篇 9-15 旧调研 | 事实性结论（如「Sidecar 必须用系统 node 启动」、合规策略） | 落地状态口径已过期 |
-| `attic/novel-workflow/`、`.novel-workflow/` | — | **与主线无关，忽略**（`PROJECT-PLAN.md:60` 已判定） |
-| `D:/Program/_wcc_dupes_snapshot_2026-11-10/` | 9 份 `(2)` 版本旧照，仓库外 | 不入库、不作为开发依据 |
+## 2. 已定决策与文档分层
 
----
+### 2.1 第 0 号决策：B+A 双轨（已拍板）
 
-## 3. 现状诊断：断点清单
+- 以 **1.31+ / Lua 为开发主线**；本机 War3 1.26.0.6401 **只读保留，不升级 / 不替换 / 不修改**（含 `change\` 版本包）。
+- 1.31+ 验证环境由用户自备，AI 不代装。
+- `manifest.json` 必须记录 `targetPatch` 与 `language`；P2 阶段 B 走 **E3 Lua 注入**（MCP `wc3_set_durable_script` 双写 / `w2l obj`）。JASS / E2 仅保留为**不施工**的可选支线。
+- 1.31+ 环境未就绪时，阶段 A/B 按「条件触发」处理，只交付契约与单测并标 🔴，**状态行不推进，不虚报已打通**。
 
-### 3.1 文档已明确标注的断点
+### 2.2 文档分层
 
-| # | 断点 | 依据 |
-|---|---|---|
-| D1 | **`harness/` 整层未接入主产品**——`createHarness()` 未被 `agent.js` / `server.js` 引用 | `HARNESS-IMPLEMENTATION.md:18`、`README.md:135-136`、`§7` 第 1 项 🔴 |
-| D2 | 无模型 key 时 `agent.js` 走 `offlinePlan()`，只回文本，`tool_calls` 为空 | `agent.js:166-177`；`PROJECT-PLAN-2.0.md:118` mock model E2E 未勾选 |
-| D3 | `build_map` 只写 `war3map.lua` 脚本包，**不出二进制 `.w3x`** | `build-map.js:130-131,164`；`PROJECT-PLAN-2.0.md:7-10` 状态校正 |
-| D4 | 没有 `.wcc/ir/` 文本中间表示，AI 无法「改文本 → build 回地图」 | `MAP-GENERATION-PLAN.md:202`、`L390-392` L1/L2 全缺 |
-| D5 | 无 `snapshot` / `diff` / `verify`，无「生成→编译→报错回喂模型」闭环 | `MAP-GENERATION-PLAN.md:287-294`、`HARNESS-IMPLEMENTATION.md:224` 🟠 |
-| D6 | Electron 二进制缺失、`build` 是 echo 占位、启动器硬编码 node 路径 | `FEASIBILITY-REVIEW.md:60-62`；本机实测 |
-| D7 | 本机 War3 **1.26.0.6401 只支持 JASS**，`war3map.lua` 不能试玩 | `README.md:146`、`MAP-COMPILE-PIPELINE.md:304-307` |
-| D8 | forge 未联调（`WC3FORGE_EXE` unset）、无 stdio MCP server（`packages/wcc-mcp` 仓库里不存在） | `HARNESS-IMPLEMENTATION.md:22,265`、`§7` 第 6/7 项 |
-| D9 | 无仓库级 `AGENTS.md`，「任何 harness 读同一份铁律」未建立 | `HARNESS-IMPLEMENTATION.md:216,243,265` |
-| D10 | 领域数据薄：物编 ID 字典为零（AI 幻觉 `'hfoo'` 根因）、数据表仅 1 章、测试底图零 | `ASSETS-GUIDE.md:12-18` |
+| 归类 | 文件 |
+|---|---|
+| **主线依据** | 本文件（唯一排期）、`AGENTS.md`（仓库契约，`mode: always`）、`README.md`、`docs/P0-DISPOSITIONS.md`、`docs/HARNESS-IMPLEMENTATION.md`（实现记录）、`docs/MAP-COMPILE-PIPELINE.md`（编译链与 IR 唯一契约）、`docs/MAP-GENERATION-PLAN.md`（地图计划）、`docs/ASSETS-GUIDE.md`、`docs/NEW-MACHINE-SETUP.md`、`docs/DEPLOYMENT-SHORTCUTS.md`；代码事实：`harness/**`、`packages/**`、`apps/**`、`wcc-skill/**`、`scripts/**` |
+| **参考（结论有效，非排期）** | `docs/FEASIBILITY-REVIEW.md`、`docs/FORGE-INTEGRATION.md`、`docs/HARNESS-REFERENCE.md`（§7 已作废）、`wcc-skill/skill.md`（规范唯一权威）、`docs/DEVELOPMENT-NOTES.md` 等旧调研的事实性结论 |
+| **快照（不作进度依据）** | `PROJECT-PLAN.md`、`PROJECT-PLAN-2.0.md`、`项目状态与改进报告.md`（未被 git 跟踪）、根 `wcc-ai-blueprint.md` / `wcc-architecture.md` / `wcc-skill.md`、`attic/`、`.novel-workflow/`、`.workbuddy/memory/` |
 
-### 3.2 本次实测**新发现**、文档未写的问题（计划增量）
+## 3. 路线图总览
 
-| # | 问题 | 证据 | 违反的既有纪律 |
+| 阶段 | 目标 | 依赖 | 完成标志 |
 |---|---|---|---|
-| N1 | **`build_map` 对 `missing` 模块静默返回成功**（空项目也写出 584 字节并报成功） | `POST /build` 实测 | `MAP-COMPILE-PIPELINE.md:371`「绝不静默假装成功」 |
-| N2 | **Electron 安装软失败被掩盖**：`scripts/optional-electron.js` 只判断 `package.json` 存在就打印 `electron present`，不校验二进制 | postinstall 实测 + 本机 `node_modules/electron/` 无 `path.txt`/`dist/` | `FEASIBILITY-REVIEW.md:61` |
-| N3 | **质量门禁默认不阻断**：`hooks.js:84` `blockOnIssues=false`；`check.js:165` warning 不计入 `ok`，故 3 个 WARNING 仍 `ok=true` | 源码 + `npm run check` | `HARNESS-IMPLEMENTATION.md:93` 质量门禁设计意图 |
-| N4 | 根 `npm test` 只跑 27 个，**漏掉 harness 的 15 个**；`tests/` 目录为空 | 根 `package.json` + 实测 | `NEW-MACHINE-SETUP.md:66-74` 回归基线 |
-| N5 | `@wcc/shared` 是名义包：`dist/` 不存在、`IPC` 常量名与 `main.js`/`preload.cjs` 实际用的不一致、无人 import | 源码 Grep | 架构一致性 |
-| N6 | `wcc-lib/wcc-hotreload.lua` 依赖原生 `require`，而 WC3 Lua 无 `require`（打包用自造 `__wcc_require`）→ 真机上 `Init()` 降级返回 false | `wcc-hotreload.lua:17,35,49` + `build-map.js` | 可用性 |
+| **P1.5** | 口径统一 + P1 残留收尾，建立可验收的产品底座 | 无 | §4 全部 WP 通过，§7 收尾门禁全绿 |
+| **P2** | 文本 IR + 真实 `.w3x` 读改回写 + E3 Lua 脚本进图 | P1.5；阶段 A/B 依赖用户自备环境 | `MAP-COMPILE-PIPELINE.md` 两阶段 P0 全过 |
+| **P3** | 打包分发、GPL 红线、真 forge 联调、独立 MCP server、TUI 真机验收 | P2 全过 + Electron 可用 | 新机器双击即用 |
+| **P4** | forge PR 生态 | P3 中踩到真实 bug | 议题来自真实需求，不编造 |
 
-### 3.3 一句话链路判断
+**P2 未通过前，仓库内任何「已支持地图生成 / 已打通编译链」的说法都不成立。**
 
-> **「桌面 UI → Sidecar → Agent → 工具 → 静态检查」代码是通的；「用户说一句话 → AI 生成 Lua → 检查 → 产出可进图地图」端到端跑不通。**
+## 4. P1.5 收尾（详细）
 
----
+> `AGENTS.md` 是 `mode: always` 注入给所有 Agent 的契约，**只允许改 §3 现状速记的过期句与 §1 排期指针**；严禁改 §2 工程约定、尤其术语消歧块；不得复述铁律、不得新增第二份规范。改后必跑 harness 自测断言 `agents` 命中。
 
-## 4. 第 0 号决策：目标补丁（**必须先拍板**）
+| WP | 类型 | 主要文件 | 改动要点 | 验收 |
+|---|---|---|---|---|
+| **WP1** | 文档 | 本文件；`AGENTS.md`、`README.md`、`docs/HARNESS-IMPLEMENTATION.md`、`docs/HARNESS-REFERENCE.md`、`docs/P0-DISPOSITIONS.md` 的跨文档指针 | 按「防过期机制」重构；6 处带章节号的悬空指针改文档级链接；附录 A 补 N1–N6「已处置」 | 全文无旧基线 commit、带章节号的悬空指针与全局未开工断言（由 `docs:check` 断言 1 校验）；`npm test` 不回退 |
+| **WP2** | 文档 | `AGENTS.md` §3、`docs/MAP-COMPILE-PIPELINE.md`、`docs/NEW-MACHINE-SETUP.md`、`docs/DEPLOYMENT-SHORTCUTS.md`、`README.md` | 8 个文件里「未拍板 / 待拍板 / 第 0 号决策」改为「**已拍板：B+A 双轨**」；编译链缺口 #10 改 ✅；历史段落保留原文只加注记 | 全仓无活跃「未拍板」；harness 自测 19/19 |
+| **WP3** | 文档 | 6 篇 docs 文首、`README.md`、`docs/DEPLOYMENT-SHORTCUTS.md`、`docs/NEW-MACHINE-SETUP.md`、`docs/ASSETS-GUIDE.md` | 11-10 Gitee 叙事原文保留 + 加「历史快照，现行口径见 AGENTS.md §2.4 / `npm run sync`」注记；去「Gitee 主仓库」；手工双 push 改 `npm run sync`；回归基线 27→57 / 15→19 / 3 warnings；`wcc-lib` 统一 11 个 .lua / 1848 行 | §7 门禁 grep 无残留；`npm run sync:check` EXIT=0 |
+| **WP4** | 文档 | `README.md`、`examples/demo-campaign/README.md`、`wcc-skill/skill.md`、`wcc-skill/knowledge/{conventions,project-structure}.md`、`packages/wcc-skill-mimocode/.../SKILL.md`、`docs/ASSETS-GUIDE.md`、`docs/DEVELOPMENT-NOTES.md`、根 `wcc-*.md` | **区分两类 require**：源码内 `require("src.*")` 合法（`build-map.js` 内联为 `__wcc_require`），保留并加统一消歧注记；**进图指引**「WE 触发器写 `require("src.main")`」与「打开 `demo-campaign.w3x`」删改为「粘贴 `dist/build/war3map.lua` 全文 / P2 阶段 B E3 durable 双写」；`ASSETS-GUIDE.md` 的「补 build_map 写二进制」改指两阶段 P0；根三份愿景文档加统一快照横幅，**正文不改** | 无活跃 `在 World Editor 中打开` / `demo-campaign.w3x` 虚标 / `触发器，内容为.*require`；含 `require("src` 的 skill 文档都有 `__wcc_require` 注记 |
+| **WP5** | 文档 | `docs/MAP-COMPILE-PIPELINE.md` §6.1、`docs/MAP-GENERATION-PLAN.md`、`docs/HARNESS-IMPLEMENTATION.md` | 三套 IR 目录契约改「唯一权威（编译链 §6.1）+ 指针」，字段 `wc3Patch`→`targetPatch`；地图计划内部 P0/P1/P2 改名 M0/M1/M2（映射见附录 B） | 全仓无第二份 `.wcc/ir/` 目录树 |
+| **WP6** | 代码 | `packages/wcc-sidecar/src/server.js`、`packages/wcc-sidecar/src/agent.js` | `createHarness()` 显式传 `agentsFile` 指向**仓库根唯一那份** `AGENTS.md`（不得复制第二份）；`agent.js` fallback 同步；`/health` 的 `harnessWired` 改真实探测；注释收窄为「产品进程内单实例，独立 CLI TUI 另建实例」。pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧 0 调用，**如实标注未接线，本轮不强行接** | 以 `WCC_PROJECT_ROOT=examples/demo-campaign` 起 sidecar，`/harness/steering` 命中 `agents`；新增 1 条 agentsFile 回归测试 |
+| **WP7** | 代码 | `apps/wcc-desktop/src/renderer/app.js`、`index.html`、`apps/wcc-desktop/package.json` | renderer 消费已暴露但零调用的 `harnessState()` / `harnessSteering()`，加最小状态面板（wired / layers / savedChars / selected tools）；`#btn-check` 把 `lua_check` 结果写入 `#check-out`；`build` 去掉 echo 假成功，改为明确报错「electron-builder 打包属 P3，未实现」 | `npm run build:desktop` 非 0 且含「P3 未实现」；`app.js` 命中 `harnessState` |
+| **WP8** | 代码 | `harness/src/hooks.js` | `defaultGateRunner` 的 targets 改为相对仓库根可解析（当前桌面项目下两路径都不存在 → `skipped:true` 空转）；`turn.start` 产品侧不 emit、spec 仅 CLI 注入如实标注 | 新增测试：`createHarness({projectRoot:'examples/demo-campaign'})` 后 `task.complete` 返回 `skipped:false` |
+| **WP9** | 文档 + 验证 | 全仓 `*.md`（排除 `.workbuddy/`、`.novel-workflow/`、`.omo/`、`attic/`、4 个保留未跟踪项） | **独立一道收尾门禁**：执行 §7 检查表，逐条留输出 | §7 全部断言通过；`npm test` / `npm run check` / demo / selftest 全绿 |
 
-`MAP-COMPILE-PIPELINE.md:29 / L311-319 / L449-451` 明确：「真正没解决的是**选哪个目标版本**，这个必须先拍板，否则后面全部返工」。
+**内部顺序**：WP1 →（WP2 / WP3 / WP4 并行）→ WP5 → WP9 门禁 →（WP6 / WP7 / WP8 并行）→ WP9 复跑。WP2 改 `AGENTS.md` 后立刻跑 harness 自测。
 
-| 选项 | 含义 | 代价 / 后果 |
+## 5. P2 进图（详细，条件触发）
+
+**统一前置**：只写 `.edited.w3x` 副本、改前快照、WE 中打开的图先关闭、GUI 触发器改后 Save 一次、AI 永不直接改二进制、只写文本 IR；GPL/AGPL 工具（w3x2lni / YDWE / HiveWE / wc3-forge / WurstScript）**只做外部进程调用，源码绝不进 MIT 仓库**；不分发暴雪资产。
+
+**证据等级**：`w2l` 命令 / `grill` / MCP Server 打包 / `mutateWtg()` byte-for-byte 闸门 / durable 双写为 ✅ 上游源码级；`jasshelper` / YDWE 兼容性为 🟠 二手；本机实跑 `w2l`、clone MCP Server、装 `grill`、`mdx-m3-viewer` 逐字节验证、1.26 classic `wtg` 序列化器、`wpm`/`shd` 规则、1.31+ 环境、`WC3FORGE_EXE` 均为 🔴 未做未验。所有 🔴 一律写「没有」。
+
+| 组 | 任务 | 文件 | 验收 | 外部依赖 | 未就绪时降级 |
+|---|---|---|---|---|---|
+| **G0** | P2-1 物编 ID 字典 | 新建 `wcc-skill/knowledge/wc3-object-ids.md`（`mode: conditional`）；数据取本机 `Units\UnitData.slk` 等或 `w2l mpq` 或 Hive 公开列表；注明 `wcc-objects.lua` 的 `RegisterUnit` 不校验 rawcode | `steering list` 命中；含 `'hfoo'` / `'n001'` 反例 | 本机 SLK 🟠 | 只写已核实的少量四字码 + 来源与覆盖率，标 🔴 不完整，**绝不编造 ID** |
+| **G1** | P2-2 `wcc.map.snapshot` / `diff` / `verify` | `harness/src/scripts.js` 注册并实现（纯 node + `spawnSync`，零 npm 依赖）；`verify` 范本为「不能无损重建就拒绝写」；`wcc.map.build` 的 declared-only 占位可保留 | snapshot 原图 sha256 不变；diff 可读可 `apply -R`；verify 不一致**必须拒写**；含负例测试；**禁止 echo / `cmd:null` 冒充完成** | snapshot/diff 本机可闭环；verify 需 `mdx-m3-viewer` / `w2l lni` 🔴 | 工具缺失返回 `{ok:false, reason:'external-tool-missing'}` 并阻断写图，标 🔴 未实测 |
+| | P2-3 三条硬约定 | `docs/MAP-COMPILE-PIPELINE.md` §6.1 + 附录 C | AI 产物只含 `*.json` / `*.ini` / `script/*`；`manifest` 含 `targetPatch`+`language`；`build/` 在 `.gitignore` 且可从 IR 全量重建 | — | — |
+| **G2 阶段 A**（刻意不写任何脚本） | P2-4 A1–A4：选 1 张官方 Scenario 小图 → 读 `war3mapUnits.doo` 且 round-trip 逐字节一致 → 只平移 1 个单位 128，写 `xxx.edited.w3x` → WE 打开 + Save + Test Map | 依据 `MAP-COMPILE-PIPELINE.md` 阶段 A；产物不入库 | A2 sha256 前后一致；A3 原图 hash 不变；A4 截图与日志回流 | 真实 `.w3x` + `mdx-m3-viewer` / `w2l lni` 🔴 + WE 可用 | 标 🔴 未闭环，只交付 round-trip 设计 + **合成字节块单测**；不得据合成夹具写「WE 能打开」 |
+| **G3 阶段 B**（E3 Lua 主线） | P2-5 B1：`manifest.json` 填 `targetPatch="1.31+"`、`language="lua"`；`war3map.j` 仅保留可选支线目录、不施工 | `.wcc/ir/<map-id>/manifest.json` 模板入 docs，实例不入库 | JSON 两字段有值 | — | — |
+| | P2-6 B2：最小脚本经 **MCP `wc3_set_durable_script` 双写 / `w2l obj`** 注入；`wcc.map.set_script` 必须带 `targetPatch`+`strategy`（`script-only\|durable\|gui`），`script-only` 明确警告「WE 重存会丢失」，绝不静默成功 | `harness/src/scripts.js` 新增 `wcc.map.set_script`；外部仅 `spawnSync` | 产物内脚本可核对；`script-only` 返回警告**且不写图**；`harness/` 内无 JASS 主线痕迹 | 用户自备 1.31+ + MCP Server 或 `w2l obj` 🔴 | 标 🔴 未验证，只交付**参数契约 + 假 adapter 单测**（缺 targetPatch 拒绝、script-only 带警告） |
+| | P2-7 B3/B4：WE Save 后重读确认脚本未被覆盖（**durable 分水岭**）→ Test Map 看到输出 + 日志回流 + `lua_check` | 依据 `MAP-COMPILE-PIPELINE.md` 阶段 B | B3 重读哈希比对；B4 截图/日志 + `npm run check` 0 errors | 同 P2-6 + 真实 WE | 同上，标 🔴 不虚报 |
+| **G4** | P2-8 补示例资产：`tables-sample.json` 扩到 3 章、manifest 双轨字段、demo README 不再虚标 `.w3x` | `examples/demo-campaign/README.md`、`tables-sample.json`、必要时 `src/chapter_02.lua` / `chapter_03.lua` | 3 章样本齐；`npm test` 不回退；README 无「已有 `.w3x`」 | 无（纯文本可闭环） | 先补数据 + 否定注记，章节脚本标「示例，未进图」 |
+
+**环境就绪检查表**（每次开工前逐条确认，全过才允许把阶段 A/B 从「条件触发」改为「可执行」）：① 1.31+ 客户端可用；② 一张非加密真实 `.w3x` 已选定并备份；③ WE 可打开 + Save + Test Map；④ `w2l` / `mdx-m3-viewer` / MCP Server 至少一条注入路径可用且已实测 round-trip。
+
+## 6. P3 / P4 纲要
+
+**P3 产品化与分发**（触发：P2 两阶段 P0 全过 + Electron 可用 + GPL 红线书面定死）：最小 `electron-builder` 便携包与去启动器硬编码 node 路径；打包前定死「安装包不捆绑 `wc3-forge.exe`」；真 forge 联调（probe unset 不得虚报已连）；独立 stdio MCP server `packages/wcc-mcp`（当前不存在，仅进程间协议）；交互式 TUI 真机验收 + 流式刷新 + diff 挂审批。
+
+**P4 外部生态**（触发：P3 真 forge 联调中踩到**真实** bug）：议题必须来自真实 bug / 真实需要，不编造；遵守 `FORGE-INTEGRATION.md` 五条 ❌ 与 `FEASIBILITY-REVIEW.md`「不要把增强 MCP 功能当首个 PR 目标」。
+
+## 7. 验收、提交与红线
+
+### 7.1 每阶段必跑
+
+```bash
+npm test                                   # 基线 57/57；代码改动须追加测试并说明新增数
+npm run check                              # 13 files / 0 errors / 3 warnings / ok=true
+node harness/bin/wcc-harness.mjs demo       # EXIT=0
+node harness/bin/wcc-harness.mjs selftest   # 19/19
+node scripts/optional-electron.js           # 必须报 NOT usable，不得谎报 present
+npm run sync:check                         # 推前校验三处一致
+```
+
+P2 追加：三脚本负例单测、sha256 比对输出、WE / Test Map 截图与日志回流。
+
+### 7.2 WP9 收尾门禁
+
+**一条命令**：`npm run docs:check`（实现见 `scripts/check-doc-consistency.mjs`）。退出码非 0 即失败，逐条列出命中文件与行。
+
+| # | 断言 | 范围 |
 |---|---|---|
-| A 守 1.26 走 JASS | 贴合本机 | **现有 1841 行 Lua 运行时 + 全部 wcc-skill 铁律推倒重来**，且 1.26 无文件夹地图、MCP 招牌能力不可用 |
-| B 另备 1.31+ 验证机 | 保住 Lua 资产，真机可验收 | 需用户自行准备 1.31+（**不动本机 1.26 是红线**） |
-| C 只做离线生成 | 最省事 | 永远无法端到端试玩，验收口径必须降级 |
+| 1 | 主计划不再自相矛盾、无硬编码 commit、无悬空锚点 | 主计划自身 |
+| 2 | 无活跃的「决策未定」口径 | 全仓 `.md`（排除主计划与工具/快照目录） |
+| 3 | 无过期回归基线、无「主仓库 / 手工双推」旧措辞 | 同上 |
+| 4 | 无错误进图指引、无虚构地图文件、无第二套 IR 目录树 | 入口指引文档 + `docs/` |
+| 5 | `AGENTS.md` 仍被 steering 以 `mode: always` 命中 | 实跑 CLI |
+| 6 | 4 个保留未跟踪项与 `.workbuddy/` 未被 git 跟踪 | `git ls-files` |
 
-**本计划推荐：B + A 并行（双轨），以 1.31+ / Lua 为开发主线，本机 1.26 只读保留作参照。**
+> 主计划因需**描述**待清理口径，在断言 2–4 中被排除；检查用的模式字符串只存在于 `.mjs` 脚本，不写进 `.md`，避免自命中。
 
-理由：
-1. 现有 `wcc-lib/` 11 模块、`wcc-skill/` 全为 Lua，改 JASS 等于废弃最大资产；
-2. `README.md:30` 已声明目标 `v1.31+`，双轨与既有定位一致；
-3. 1.31+ 才能用 `wct`/`wtg` 写入与「WE Save 一次进图」流程；
-4. `MAP-COMPILE-PIPELINE.md:442` 红线「未升级、未替换、未修改本机 1.26 游戏」必须守住，因此 1.31+ 只能是**另备环境**，由用户决定，我不代装。
+### 7.3 证据与提交
 
-**若用户不准备 1.31+ 环境**：阶段 2 自动降级为「只做文本 IR + snapshot/diff/verify + 离线脚本包」，并在 README 明确写「不产出可试玩地图」——按项目真实性纪律，**不得写「已支持地图生成 / 已打通编译链」**。
+- 附录 A 每条记录带「可复现命令 + 输出摘录」；每个 🔴 明确写「没有 / 未验证 / 未闭环」，并附**降级后实际交付了什么**，不留空、不写「计划中 = 已完成」。
+- 提交前 `git status --short` 核对：4 个保留未跟踪项与 `.workbuddy/` 仍未跟踪；`.w3x` / `*.lnk` / `.wcc/config.json` / 本机绝对路径不入库。
+- 只 `git add` 本次已跟踪改动 → commit（新提交，非 amend，不跳 hook）→ **`npm run sync`**（分叉拒绝、禁 force、推后三方校验）→ `npm run sync:check` 复核。脚本在已跟踪文件有未提交改动时拒绝推送，故**必须先 commit 再 sync**；按单数据源口径**禁止**分别 `git push origin main` / `git push gitee main`。
+- 状态行推进单独一次「仅状态行」commit 后再 sync。
 
-**`manifest.json` 必须记录 `targetPatch` 与脚本语言**（`MAP-COMPILE-PIPELINE.md:347-350`），这是双轨落地的第一块砖。
+### 7.4 红线（开工前复述）
 
----
-
-## 5. 路线图
-
-优先级依据：`HARNESS-IMPLEMENTATION.md §7`（唯一权威下一步）+ `MAP-GENERATION-PLAN.md §7` P0 + `MAP-COMPILE-PIPELINE.md §7` 两阶段验收。
-
-### P0 — 基线固化与「不依赖拍板」的止血（先做，不改业务代码）
-
-| 任务 | 改动 | 验收 |
-|---|---|---|
-| P0-1 **修过期状态声明**（见 §8） | `README.md`、9 篇新文档文首补记 | 仓库内不再出现「GitHub 停在 12b9169」「用 GitHub 地址 clone 拿最新」 |
-| P0-2 **测试基线统一** | 根 `package.json` 的 `test` 纳入 `harness/test/harness.test.js`；`tests/` 空目录补 E2E 占位说明或直接移除 | `npm test` = **42 pass**（27 + 15） |
-| P0-3 **修 N1 假成功** | `build-map.js`：`missing.length > 0` 时返回明确失败，不写产物 | 空项目 `POST /build` 返回非成功，`missing` 可见 |
-| P0-4 **修 N2 安装检测** | `scripts/optional-electron.js`：校验 `path.txt` / 二进制，缺失时给明确指引（含 `ELECTRON_MIRROR`，**不加 `ELECTRON_CUSTOM_DIR`**） | 缺失时 postinstall 不再谎报 `electron present` |
-| P0-5 **修 N3 门禁**（设计确认后） | `hooks.js` `blockOnIssues` 在 `task.complete` 显式开启；`check.js` 区分 error/warning 输出 | WARNING 不误报 ok，但也不误伤现有 13 文件 |
-| P0-6 **补 `AGENTS.md`**（D9） | 仓库根，收拢 `wcc-skill/skill.md` 四条铁律 + 输出协议 + 违禁行为，供所有 harness 读取 | `steering.js` 能命中 `mode: always`；与 `wcc-skill/skill.md` 不产生双数据源 |
-| P0-7 **补 N5/N6 处置结论** | 决定 `@wcc/shared` 是补齐还是删除；`wcc-hotreload.lua` 标注「WC3 环境不可达」或从分发清单剔除 | 有明确书面结论，不留悬空 |
-
-> P0 全部**不触碰模型与地图**，可独立交付。此阶段结束前不得宣称任何功能「已打通」。
-
-### P1 — 让 harness 从旁路变成产品行为（**最高 ROI，第一优先级开发**）
-
-对应 `HARNESS-IMPLEMENTATION.md §7` 第 1/2/4 项 🔴。
-
-| 任务 | 改动 | 验收 |
-|---|---|---|
-| P1-1 **接入 `createHarness()`** | `agent.js`：`assembleSystem()` → `steering.select + render`（替代 skill.md 前 2000 字全量）；`toolDefs()` → `injector`（29 工具按需）；`guard < 8` → `budget`（含取消时 `patchToolCalls()`）；工具结果 → `scratch.offload`（替代 `slice(0,50_000)`） | steering 注入量可观测、工具按需、预算生效；**27+15+新增测试全绿** |
-| P1-2 **保留离线降级路径** | 无 key 时仍走 `offlinePlan()`，不因接线导致回归 | `/chat` 无 key 行为不变 |
-| P1-3 **mock model E2E** | 补测试覆盖 `PROJECT-PLAN-2.0.md:118` 未勾选项：mock 流式 + 工具调用 + 生成 Lua + `lua_check` + 报错回喂修正 | 「一句话 → Lua → 检查 → 修正」在**无真实 key** 下可复现 |
-| P1-4 **`/harness/*` 端点** | `server.js` 暴露 `/harness/state`、`/harness/steering`、`/harness/spec`、`/harness/hooks`，renderer 与 TUI 共用 | 遵守 `HARNESS-IMPLEMENTATION.md:176`「**双表面可以，双数据源不行**」 |
-| P1-5 **provider 下拉** | `config-store.save(providerPatch(id,key))`，国产模型零翻墙 | 设置页可切换 7 个预设，`/health modelConfigured` 变化可观测 |
-| P1-6 **质量门禁回喂**（D5 最小版） | `lua_check` 结果作为 tool result 回灌模型，形成「生成→检查→修」闭环 | 有可复现的 E2E 用例；`HARNESS-IMPLEMENTATION.md:224` 🟠 转 ✅ |
-
-### P2 — 让产物能「进图」（最难点，**依赖第 0 号决策**）
-
-严格按 `MAP-COMPILE-PIPELINE.md §7` 分两阶段，**A 阶段刻意不写任何脚本**（`L386`）。
-
-| 任务 | 依据 | 验收 |
-|---|---|---|
-| P2-1 **物编 ID 字典** `wcc-skill/knowledge/wc3-object-ids.md` | `ASSETS-GUIDE.md:15,118` ROI 最高，AI 幻觉根因 | 单位/建筑/物品分类 + 四字码，`steering` 可命中 |
-| P2-2 **`.wcc/ir/` 文本 IR + 3 个脚本** `wcc.map.snapshot` / `diff` / `verify` | `MAP-GENERATION-PLAN.md:421-430,440` P0 | diff 可读、可回滚、round-trip 自检通过；**禁止 `echo` 占位**（`L432`） |
-| P2-3 **阶段 A**：1 张真实 `.w3x` → 读 → IR → 写回 `.edited.w3x` → WE 打开 → Save → Test Map | `MAP-COMPILE-PIPELINE.md:379-386` | 不报错、单位在新位置、地形/树林/触发器未丢 |
-| P2-4 **阶段 B**：脚本编译进图，接 `w2l`/`grill` **外部进程** | `MAP-COMPILE-PIPELINE.md:390-395` | B3「durable 与否的分水岭」通过；`wcc.map.set_script` 必须带 `targetPatch`/`strategy`，`script-only` 时明确警告「WE 重存会丢失」 |
-| P2-5 **补示例资产** | `ASSETS-GUIDE.md:115-122`：修 `demo-campaign.w3x` 虚标、`tables-sample.json` 扩到 3 章 | README 不再虚标；3 章 demo 可打包 |
-| P2-6 **`manifest.json` 双轨字段** | `MAP-COMPILE-PIPELINE.md:347-350` | 记录 `targetPatch` + 脚本语言；`build/` 全量可重建 |
-
-> P2 全程红线：只写 `.edited.w3x` 副本 / 改前快照 / WE 中打开的图先关闭 / 改 GUI 触发器后 Save 一次 / **AI 永不直接改二进制** / 外部工具只调用不复制源码 / 不动本机 1.26。
-
-### P3 — 产品化与分发（`FEASIBILITY-REVIEW.md` 称「产品化最后一步」）
-
-| 任务 | 依据 | 验收 |
-|---|---|---|
-| P3-1 最小 `electron-builder` 便携包 + 去掉启动器硬编码 node 路径 | `HARNESS-IMPLEMENTATION.md §7` #5 🔴 | 新机器双击即用；`build` 不再是 echo |
-| P3-2 **打包前先定死 GPL 红线** | `FEASIBILITY-REVIEW.md:94` | 安装包**不捆绑** `wc3-forge.exe` |
-| P3-3 真 forge 联调 | `§7` #6 🟠 | `WC3FORGE_EXE` 生效后 `/health` 出现 `forgeConnected:true`；**probe 仍 unset 时不得虚报已连** |
-| P3-4 独立 stdio MCP server `packages/wcc-mcp` | `§7` #7 🟠 | 仅进程间协议通信，forge 源码零复制；`FORGE-INTEGRATION.md:89`「先把 L2 跑通再开口」 |
-| P3-5 交互式 TUI 真机验收 + 流式刷新 + diff 挂审批 | `§7` #8 🟠 | 真 TTY 下验收，非静态渲染 |
-
-### P4 — 外部生态（**最后，且非必须**）
-
-- `FEASIBILITY-REVIEW.md:163`「议题必须来自真实踩到的 bug / 真实需要，**不编造**」；
-- `FORGE-INTEGRATION.md:171-178` 五条 ❌：不首条 Issue 申请 collaborator、不整体搬进 forge 的大 PR、不复制 GPL 源码、不批量改格式、不编造 bug；
-- `FEASIBILITY-REVIEW.md:175`「不要把『增强 MCP 功能』当首个 PR 目标」；C1/C2/并行仍需用户拍板（作者建议「C2 先做实，C1 再作为关系建立」）。
+不动本机 1.26 游戏与 `change\` 版本包、AI 不代装 1.31+；GPL/AGPL 源码只外部进程调用、绝不进 MIT 仓库、安装包不捆绑 forge；不分发暴雪资产；写图只落 `.edited.w3x` 副本 + 改前快照 + WE 先关图 + 改触发器后 Save 一次 + AI 永不直接改二进制；所有 🔴 如实写「没有」、**禁止 echo 占位冒充完成**、不虚报 forge 已连、不把 steering「命中」虚报成「已注入」；harness 零 npm 依赖 / 零 Python / 无 LangGraph，**双表面可以，双数据源不行**；不重做地图编辑器、不引入向量库；`packages/wcc-shared` 保持冻结（`P0-DISPOSITIONS.md`），不因统一 IPC 名而 import 或产 dist。
 
 ---
 
-## 6. 验收口径（定义「做完」）
+# 附录 A · 执行记录归档
 
-沿用 `MAP-GENERATION-PLAN.md:8-11` 证据等级：✅ 本机实测 / 🟠 官方文档或二手 / 🔴 未实现未验证。
+> 本附录只写已做的。阶段推进时把任务表整块从正文移入此处并附实测命令与输出。
 
-1. **P1 完成标志**：mock model 下跑通「一句话 → 生成 Lua → `lua_check` → 报错回喂 → 修正」，且 `npm test` 全绿、steering 注入量可观测。此时才可以把 `harness/` 从「旁路层」改称「产品行为」。
-2. **P2 完成标志**：阶段 A + 阶段 B 两阶段 P0 全过（`MAP-COMPILE-PIPELINE.md:397` 目前「两阶段都没做」）。**在此之前，仓库内任何「已支持地图生成」「已打通编译链」的说法都不成立**（`L443`）。
-3. **全局回归基线**：`npm test` 42+ pass、`npm run check` 无 error、`harness demo` EXIT=0、`dev:desktop` 可启动。
-4. 每一项的 ✅ 必须附**可复现命令与输出**，禁止「计划中 = 已完成」。
-
----
-
-## 7. 红线（开工前必须复述一遍）
-
-| 类别 | 红线 |
-|---|---|
-| 许可证 | forge（GPL-3.0）/ w3x2lni / YDWE / HiveWE **只做外部进程调用，源码绝不进 MIT 仓库**；安装包不捆绑 `wc3-forge.exe`；C1/C2 用两个独立 clone 物理隔离 |
-| 版权 | 不分发暴雪原版资产；`common.j`/`blizzard.j`/SLK 只本机提取使用；`D:\360MoveData\`、`D:\净土\kkkk\` 只读勿移动勿删除 |
-| 真实性 | 所有 🔴 一律写成「没有」；**不允许先写 `echo` 占位冒充完成**（现有 `build` 脚本就是反面教材）；不虚报 forge 已连；不把 steering「命中」虚报成「已注入」 |
-| 写图安全 | 默认落 `.edited.w3x` 副本、改前快照、WE 中打开的图先关闭、改 GUI 触发器后 Save 一次、AI 只写 `*.json`/`*.ini`/`script/*` 文本 |
-| 用户环境 | **不升级、不替换、不修改本机 1.26 游戏与 `change\` 版本包**；1.31+ 验证环境由用户决定，不代装 |
-| 凭据/部署 | `.lnk` / `.wcc/config.json`（含 apiKey）/ 令牌不入库；不写死盘符账号；不把改注册表当部署步骤 |
-| 架构 | harness 保持**零 npm 依赖、零 Python、无 LangGraph**；**双表面可以，双数据源不行**；不重做地图编辑器、不引入向量库；`Lua 是游戏真相源；权限先于自主` |
-| 范围 | `PROJECT-PLAN-2.0.md:41` 非 2.0：完整 3D 地图、Wurst/TS 编译、云同步、插件商店审核 |
-
----
-
-## 8. 开工前先修的「过期声明与矛盾」
-
-这些会**误导后续 AI 会话**，属于 P0-1，必须先校正：
-
-1. **同步状态滞后（最要紧）**：`README.md:5` 与 9 篇新文档文首「2026-11-10 仓库状态补记」仍写「GitHub 停在 `12b9169`、push 受阻未同步」。合并后三处已全部 = `d8ccdfb`。应改为「GitHub / Gitee / 本地三处已同步至 `d8ccdfb`」，并去掉 `NEW-MACHINE-SETUP.md:39`「不要用 GitHub 地址 clone」的绝对化表述。
-2. **README 自相矛盾**：`README.md:5` 说 GitHub 未同步，`L39` 却给 `git clone https://github.com/Aurirlk/Wcc-deskTop.git`。统一为三处同步后的地址说明。
-3. **优先级前后翻转（以最新为准）**：`项目状态与改进报告.md:109/274` 把 Forge 真机联调列 P0 第一；最新 `HARNESS-IMPLEMENTATION.md:268` 降为第 6 位 🟠，且 `MAP-COMPILE-PIPELINE.md:453`「先不投入适配，等目标补丁定了再说」。→ **采用最新**。
-4. **打包位次**：历史报告排「本周」；`FEASIBILITY-REVIEW.md:185` / `§7` #5 明确是「产品化最后一步」。→ **采用最新（P3）**。
-5. **「可玩 .w3x」口径**：`PROJECT-PLAN-2.0.md:26` 曾写进能力阶梯（已被 `L7-10` 状态校正否定）、`ASSETS-GUIDE.md:121` 仍建议「补 `build_map` 写二进制」；最新 `MAP-COMPILE-PIPELINE.md:43,367,397,443` 要求两阶段 P0 + 目标补丁前置。→ **采用最新**。
-6. **已作废清单**：`HARNESS-REFERENCE.md §7`（`L146-151`）、`PROJECT-PLAN.md §十 Do Now`、`PROJECT-PLAN-2.0.md §8`、`项目状态与改进报告.md §10` —— 明确标注「快照，不作排期依据」。
-7. **待复核项**：`HARNESS-IMPLEMENTATION.md:196-197` 与 `MAP-GENERATION-PLAN.md:133` 记录 HiveWE 许可证 GPL-3.0 → AGPL-3.0 不一致，原文「暂不改写原结论」。保持标注，不擅自改写。
-8. **文档虚标 5 项**：`MAP-GENERATION-PLAN.md:127-133` 列出 `PROJECT-PLAN-2.0.md:21`、`PROJECT-PLAN.md:49/207`（`wcc-map/` 不存在）、`examples/demo-campaign/README.md:21`（`demo-campaign.w3x` 不存在）等，逐条修或加否定注记。
-
----
-
-## 9. 下一步立即可执行的三项（不依赖第 0 号决策）
-
-1. **§8 的文档状态校正**（P0-1）——让仓库描述与 `d8ccdfb` 事实一致，避免后续开发被旧声明带偏。
-2. **`npm test` 纳入 harness 15 测 + 修 `build_map` 假成功**（P0-2 / P0-3）——纯止血，零架构风险。
-3. **启动 P1-1 接入 `createHarness()`**（`HARNESS-IMPLEMENTATION.md §7` #1 🔴）——最高 ROI，是让「调研」变成「产品行为」的唯一动作。
-
-> 第 0 号决策（§4）只阻塞 **P2**，不阻塞 P0/P1。因此建议：**先并行推进 P0 + P1，同时把目标补丁拍板提上日程**。
-
----
-
-## 10. 执行记录：P0 已完成（2026-11-10）
-
-> 本节是**实测记录**，不是计划。所有 ✅ 均附可复现命令，符合 §6「禁止计划中 = 已完成」。
+## A.1 P0 基线固化（提交 `03c0e17`）
 
 | 任务 | 落地 | 验证 |
 |---|---|---|
-| P0-1 过期声明校正 | `README.md`、`docs/` 6 篇文首补记、`NEW-MACHINE-SETUP.md` §1、`DEPLOYMENT-SHORTCUTS.md:209` 改为三处已同步且**不跟踪具体 commit**；3 份历史 plan 加「版本快照」横幅与「Do Now 已过期」注记；`examples/demo-campaign/README.md` 去掉不存在的 `.w3x` 虚标 | `grep` 全仓无「仍停在 12b9169 / push 受阻 / 不要用 GitHub clone」断言（0 条） |
-| P0-2 测试基线统一 | 根 `package.json` 新增 `test:harness`，`npm test` 纳入 harness 与 `@wcc/shared` | `npm test` = **49/49 pass**（sidecar 27 + lua-check 2 + shared 1 + harness 19） |
-| P0-3 修 build 假成功 | `build-map.js` 在 `missing.length > 0` 时抛错且**在任何文件写入之前**；新增 2 个回归测试 | 空项目 `POST /build` → **HTTP 500** + 列出 `src.main`；`war3map.lua` 不存在 |
-| P0-4 修 Electron 检测 | `scripts/optional-electron.js` 校验 `path.txt` / `dist` / 真实二进制，给出 `ELECTRON_MIRROR` 指引（明确不加 `ELECTRON_CUSTOM_DIR`） | 本机输出 `electron NOT usable: dist folder missing (dist)`，不再谎报 present |
-| P0-5 质量门禁 | `check.js` 返回 `errors`/`warnings` 计数且报告显式区分；`hooks.js` 新增 `defaultGateRunner`，`task.complete` **真的执行**检查并阻断 error；`blockOnIssues` 默认 true；`index.js` 的 `spec_done` 改为 `run: true` | `npm run check` → `13 files, 3 issues (0 errors, 3 warnings), ok=true [review prompts]`，3 个既有 warning 未误伤；新增 3 个门禁测试全绿 |
-| P0-6 AGENTS.md | 仓库根 `AGENTS.md`（`mode: always`），**只做指针 + 仓库级约定，不复述铁律**；`steering.js`/`index.js`/CLI 全部接入 `agentsFile` | `steering list` 含 `{"id":"agents","mode":"always"}`；demo 输出 `injected=skill,agents,...`；自测断言命中且不复制铁律 |
-| P0-7 悬空项处置 | 结论见 [P0-DISPOSITIONS.md](P0-DISPOSITIONS.md)：`@wcc/shared` 冻结（+ 防呆测试）、`wcc-lib/wcc-hotreload.lua` 标注 WC3 环境不可用并写进产物 README | `@wcc/shared` 防呆测试通过；Lua 注释与 `build-map.js` 产物说明已更新 |
+| 过期声明校正 | `README.md`、`docs/` 6 篇文首补记、`NEW-MACHINE-SETUP.md` §1、`DEPLOYMENT-SHORTCUTS.md` 改为三处已同步；3 份历史 plan 加快照横幅与「Do Now 已过期」注记 | 全仓 grep 无「仍停在 / push 受阻 / 不要用 GitHub clone」断言 |
+| 测试基线统一 | 根 `package.json` 新增 `test:harness`，`npm test` 纳入 harness 与 `@wcc/shared` | `npm test` = 49/49 pass |
+| 修 build 假成功 | `build-map.js` 在 `missing.length > 0` 时抛错且在任何写入之前；新增 2 个回归测试 | 空项目 `POST /build` → HTTP 500 + 列出 `src.main`；`war3map.lua` 不存在 |
+| 修 Electron 检测 | `optional-electron.js` 校验 `path.txt` / `dist` / 真实二进制 | 输出 `electron NOT usable: dist folder missing (dist)` |
+| 质量门禁 | `check.js` 区分 errors/warnings；`hooks.js` 新增 `defaultGateRunner`，`task.complete` 真执行并阻断 error；`blockOnIssues` 默认 true | `npm run check` → 13 files / 0 errors / 3 warnings / ok=true |
+| `AGENTS.md` | 仓库根 `mode: always` 指针文档，**不复述铁律**；`steering.js` / `index.js` / CLI 接入 `agentsFile` | `steering list` 含 `{"id":"agents","mode":"always"}` |
+| 悬空项处置 | `docs/P0-DISPOSITIONS.md`：`@wcc/shared` 冻结（+ 防呆测试）、`wcc-hotreload.lua` 标注 WC3 不可用 | 防呆测试通过 |
 
-**回归基线**：`npm test` 49/49 · `npm run check` 0 errors · `harness demo` EXIT=0 · `git diff` 无未解冲突。
+**N1–N6 断点全部已处置**：N1 build 假成功（修）、N2 Electron 软失败（修）、N3 门禁不阻断（修）、N4 漏 harness 测试（修）、N5 `@wcc/shared` 名义包（**冻结**，结论见 `P0-DISPOSITIONS.md`）、N6 `wcc-hotreload.lua` 环境不可达（**标注并排除出分发**，结论见 `P0-DISPOSITIONS.md`）。此项履行 `P0-DISPOSITIONS.md` 对 N6 加标注的承诺。
 
-> 注：用户要求保留的 4 个非 `(2)` 未跟踪项（`wcc-core.lua`、`.omo/`、`.novel-workflow/`、`项目状态与改进报告.md`）**未纳入提交**，保持未跟踪原样。
-
----
-
-## 11. 执行记录：P1 已完成（2026-11-10）
-
-> P1 目标达成：**`harness/` 不再是旁路层**，`createHarness()` 已接入主产品。
+## A.2 P1 harness 接入（提交 `15a17e7`）
 
 | 任务 | 落地 | 验证 |
 |---|---|---|
-| P1-1 接入 `createHarness()` | 重写 `packages/wcc-sidecar/src/agent.js`：`steering` 条件注入替代 skill.md 前 2000 字全量；`injector` 按需工具替代 `tools.list()` 全量；**每轮新建** `createBudget` 替代 `guard<8`（避免共享 budget 8 轮后耗尽）；`scratch.wrapToolResult` 替代 `slice(0,50_000)`；`summarizeHistory` + `patchToolCalls` 每轮修复历史；harness 自有工具路由到 `harness.dispatch()` | `npm test` 57/57；E2E 断言 `harnessState().wired=true`、`savedChars>0`、`tools.selected<=14`、`budget.turns>=1` |
-| P1-2 保留离线降级 | 无 key 时 `callModel` 仍走 `offlinePlan()`，`modelConfig()` 改用 `resolveProvider`（兼容 ollama 免 key） | E2E「offline path preserved」断言只发 delta/done、零 tool_start |
-| P1-3 mock model E2E | `test/harness-e2e.test.js`：本地 SSE 假模型驱动完整链路 | 3 项 → 4 项 E2E 全绿；断言门禁反馈**出现在第二次模型请求**里（不是摆设） |
-| P1-4 `/harness/*` 端点 | `server.js` 创建**单个** harness 实例传给 agent 并暴露 `state / providers / steering / tools / spec / hooks / scratch / dispatch`；`/health` 增加 `harnessWired`；preload + main.js + renderer 接通 | 实机 HTTP：`harnessWired:true`、7 层、`AGENTS.md` 命中、`/harness/tools` 省 2590 字符、`spec_status` 正确返回 |
-| P1-5 provider 下拉 | `index.html` 加 `#cfg-provider`；`/config` POST 用 `providerPatch` 自动填 baseUrl/model（显式值优先）；`configStore.save` 清空 env 镜像；修掉空字符串覆盖预设的坑 | 实机 POST `provider=qwen` → `dashscope.../compatible-mode/v1` + `qwen-plus`；4 项配置单测 + 3 次重复运行稳定 |
-| P1-6 质量门禁回喂 | `agent.js`：写 `.lua` 后触发 `file.write` hook，block 时把报告注入下一轮消息；`lua_check` 报 error 同样回灌一次 | E2E 两条独立用例分别覆盖「写坏文件被 gate 拦」与「lua_check 失败回喂」，均断言第二次请求含 `[WCC 质量门禁]` |
-| 文档同步 | README 撤掉「旁路层未接入」；`HARNESS-IMPLEMENTATION.md` / `HARNESS-REFERENCE.md` 加 P1 状态注记（保留原文快照）；`AGENTS.md` §3 更新 | 全仓 `grep 旁路层/尚未接入` 无活跃错误声明 |
+| 接入 `createHarness()` | 重写 `agent.js`：steering 条件注入替代全量 skill；injector 按需工具替代 `tools.list()` 全量；**每轮新建** `createBudget` 替代 `guard<8`；`scratch.wrapToolResult` 替代 `slice(0,50_000)`；`summarizeHistory` + `patchToolCalls` 每轮修复历史；harness 自有工具路由到 `harness.dispatch()` | `npm test` 57/57；E2E 断言 `wired=true`、`savedChars>0`、`tools.selected<=14`、`budget.turns>=1` |
+| 保留离线降级 | 无 key 时 `callModel` 走 `offlinePlan()`；`modelConfig()` 改用 `resolveProvider`（兼容 ollama 免 key） | E2E「offline path preserved」断言零 tool_start |
+| mock model E2E | `test/harness-e2e.test.js` 本地 SSE 假模型驱动全链路 | 4 项 E2E 全绿；断言门禁反馈**出现在第二次模型请求**里 |
+| `/harness/*` 端点 | `server.js` 单个 harness 实例传给 agent，暴露 state / providers / steering / tools / spec / hooks / scratch / dispatch；`/config` 用 `providerPatch` | 实机 HTTP：7 层、`AGENTS.md` 命中、`/harness/tools` 省 2590 字符、`spec_status` 正确返回 |
+| provider 下拉 | 设置页 `#cfg-provider`；修掉空字符串覆盖预设与 env 镜像未清除两个坑 | 实机 `provider=qwen` → `dashscope.../compatible-mode/v1` + `qwen-plus` |
+| 质量门禁回喂 | 写 `.lua` 后触发 `file.write` hook，block 时注入下一轮；`lua_check` 报 error 同样回灌 | E2E 两条独立用例均断言第二次请求含 `[WCC 质量门禁]` |
 
-**回归基线**：`npm test` = **57/57 pass**（sidecar 35 + lua-check 2 + shared 1 + harness 19）·
-`npm run check` 0 errors / 3 warnings · `harness demo` EXIT=0 · 4 个保留未跟踪项仍未入库。
+**回归基线**：`npm test` 57/57（sidecar 35 + lua-check 2 + shared 1 + harness 19）· `npm run check` 0 errors / 3 warnings · `harness demo` EXIT=0 · 三处同步。
 
-**仍未做（不要写成已完成）**：P2 文本 IR 与 `.w3x` 两阶段验收、P3 electron 打包与真 forge 联调、
-P4 外部生态；第 0 号目标补丁决策**仍未拍板**，P2 依旧被它阻塞。
+**收窄口径**：P1 接入的是 steering / injector / budget / scratch / hooks / 工具路由与 `/harness/*` 端点；**renderer 未消费 harness 状态、7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧未接线**，见正文 §4 WP6–WP8。
+
+## A.3 单一逻辑数据源与双端同步（提交 `7511de4`）
+
+`AGENTS.md` §2.4 确立「本地 / GitHub / Gitee 三处副本 = 一个逻辑数据源 + 两个镜像，不再区分主仓库 / 镜像 / 谁更新」；新增 `scripts/sync-remotes.mjs` 与 `npm run sync` / `sync:check`（推两端、分叉拒绝、禁 force、推后三方校验）；术语消歧明确 §1 文档权威与 §2.5 harness 运行时状态的「双数据源不行」与 git remote 无关、始终有效。
+
+实测：`npm run sync` 快进推两端并校验 `local=github=gitee`；隔离临时 git 仓库验证「只推一端自动补齐 → EXIT=0」「远端分叉拒绝且两端未被改动 → EXIT=1」「脏工作区拒绝 → EXIT=1」；`npm test` 57/57、`npm run check` 0 errors、harness demo EXIT=0。
+
+> 4 个保留未跟踪项（`.novel-workflow/`、`.omo/`、`wcc-core.lua`、`项目状态与改进报告.md`）与 `.workbuddy/` 始终未入库。
 
 ---
 
-*本文为主计划；进度更新请直接改本文件并附实测命令，不要在历史 plan 上追加。历史文档按 §2.2 保持快照原样。*
+# 附录 B · P 编号映射
+
+`MAP-GENERATION-PLAN.md` 的内部 P0/P1/P2 是**地图子项目阶段**，已改名为 **M0/M1/M2**；本文件保留全项目 P 编号。
+
+| 全项目阶段 | 地图子项目（改名前 → 改名后） | 内容 |
+|---|---|---|
+| P2-1 | P0① → M0-① | 物编 ID 字典 |
+| P2-2 / G1 | P0② → M0-② | snapshot / diff / verify |
+| P2-4 阶段 A + P2-6 阶段 B | P0③ → M0-③ | 1 张真实 `.w3x` 读→IR→写回→WE→Save→Test Map |
+| P2 之后（不展开） | P1 → M1 | 559 张图索引、手写碎片、双执行层 |
+| P4 或更后 | P2 → M2 | 路线②自动过滤 / ③seed / 剧情 IR↔wtg 联动 |
+
+`MAP-COMPILE-PIPELINE.md` 的「阶段 A/B / 两阶段 P0」是**验收口径**，不是排期编号；两阶段 P0 = 本文件 P2 的阶段 A/B，非 M0。
+
+---
+
+# 附录 C · `.wcc/ir/` 唯一契约
+
+**唯一权威**：`docs/MAP-COMPILE-PIPELINE.md` §6.1。`MAP-GENERATION-PLAN.md` 与 `HARNESS-IMPLEMENTATION.md` 只保留指向该节的指针，不再各自定义目录树。
+
+```
+.wcc/ir/<map-id>/
+  manifest.json      # schema 版本、源图 sha256、targetPatch="1.31+"、language="lua"、
+                     #   每个内部文件「由哪个序列化器产出 + 输出 hash」
+                     #   （字段统一：原 wc3Patch→targetPatch，原「脚本语言(jass|lua)」→language）
+  terrain.json / doodads.json / units.json / regions.json / cameras.json
+  quests.json / dialogues.json / triggers.json   # 剧情层，与 HARNESS-IMPLEMENTATION 视角合并
+  objects/*.ini      # 物编修改表，对齐 w3x2lni 的 table/ 9 张 ini
+  script/
+    war3map.lua      # 【主线】1.31+ / Lua，AI 写这里
+    war3map.j        # 【可选支线】仅显式切 E2 时启用，本轮不施工
+    fragments/*.lua
+  patches/           # IR 级 diff，可审批可回滚（统一原 diffs/ 与 wcc.ir.diff）
+  build/             # 【生成物，不进 git】全量可重建，含 <map>.edited.w3x
+```
+
+三条硬约定：AI 只写 `*.json` / `*.ini` / `script/*` 文本；`manifest` 记 `targetPatch` + `language`；`build/` 全量可重建，任何一步失败从 IR 重来，不手工修二进制。`fragments/` 与 `patches/` 均为同一 `<map-id>/` 下的子目录，不另立根。
+
+---
+
+*本文件是主计划；进度更新按「防过期机制」执行，不要在历史 plan 上追加。历史文档按 §2.2 保持快照原样。*

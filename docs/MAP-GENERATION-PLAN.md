@@ -1,5 +1,7 @@
 # 地图生成与优化计划（WCC 最难的一块）
 
+> **⚠️ 历史快照（2026-11-11 标注）**：下面这段「以 Gitee 最新提交为基准合并 GitHub 原分叉」是 11-10 当日叙事，**不是现行口径**。现行：本地 / GitHub / Gitee 三处 `main` 是**一个逻辑数据源 + 两个镜像**，不再区分主仓库 / 镜像 / 谁更新；每次推送用 `npm run sync`，只校验用 `npm run sync:check`。见 [AGENTS.md](../AGENTS.md)。
+>
 > **2026-11-10 仓库状态补记（当日二次校正）**：本文撰写时「未 git commit / 未推送 / origin=gitclone.com」均为当时状态；当天成果已全部提交（`7fe0922`..`ef5a9be`，7 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开）。**当日稍后已完成三处同步**：以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，本地 `main`、GitHub `Aurirlk/Wcc-deskTop`、Gitee `wei-kaijie/Wcc-deskTop` 的 `main` 均已对齐（合并提交 `d8ccdfb`）；GitHub **不再**停在 `12b9169`。
 > 此后仓库持续开发，**最新 HEAD 一律以 `git log -1` / `git ls-remote` 为准，本文不再跟踪具体 commit**；开发主线与排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，换机说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
@@ -389,7 +391,7 @@ GitHub API 实测（2026-11-09）：**12★ / MIT / TypeScript / 最后 push 202
 |---|---|---|
 | L0 素材 | 本机 559 `.w3x` / 官方 `Scenario` 小图 / `war3.mpq` 的 SLK ID 表 | ✅ 有，零下载 |
 | L1 解析 | Python(mpyq 读) + `war3map`/`wc3maptranslator`(MIT, Node) + MPQ 写回 | 🔴 全缺，本轮未装。🟠 补正：`mdx-m3-viewer`(MIT) 已由 MCP Server 生产代码证明能纯 JS 读写/重打包 MPQ，**本轮仍属源码级证据、本机未实测**；外部编译器可选 `w2l obj`(GPL) / `grill build`(Apache) / `jasshelper`(老版本) |
-| L2 **文本 IR** | `.wcc/ir/`：`terrain.json` / `doodads.json` / `units.json` / `regions.json` / `fragments/` / `diffs/` | 🔴 全缺（`HARNESS-IMPLEMENTATION.md §3` 已列为待补脚本） |
+| L2 **文本 IR** | **IR 目录契约唯一权威见 [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md)**；本层只从分层视角引用 `terrain/units/doodads` 与 `fragments/`（碎片草案属素材层，不是第二套 IR 目录） | 🔴 全缺（三脚本与目录树见主计划 P2） |
 | L3 编排 | `harness/`（steering / hooks / spec / scratch / budget / 审批 / 工具注入）+ Sidecar | ✅ 已有 14 文件 2088 行，🟠 **旁路未接主循环** |
 | L4 执行 | forge MCP（GPL，进程隔离）/ `wc3` MCP（MIT，可集成）/ WE（编译与试玩） | 🟠 只有 forge 的转发代码，未联真机 |
 | L5 验证 | `lua_check` → IR diff → WE Save → Test Map → 日志回流 | 🟠 只有 `lua_check` 一段 |
@@ -436,11 +438,13 @@ GitHub API 实测（2026-11-09）：**12★ / MIT / TypeScript / 最后 push 202
 
 ## 7. 优先级与验收标准
 
+> **编号约定（2026-11-11）**：本表的 **M0 / M1 / M2** 是**地图子项目阶段**，与 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) 的全项目 P 编号不同；映射见其附录 B。
+>
 | 级别 | 做什么 | 为什么先做 | 验收标准（不许含糊） |
 |---|---|---|---|
-| **P0** | ① 补 `wcc-object-ids.md`（单位/建筑/物品分类 + 四字码）；② `wcc.map.snapshot` + `wcc.map.diff` + `wcc.map.verify`；③ 打通 **1 张**官方 `Scenario` 小图的「读 → IR → 写回副本 → WE 打开 → Save → Test Map」 | 没有分类字典，借鉴流过滤不成立；没有快照/diff，任何写图都不安全；没有端到端，其余全是纸面 | 拿一张真实 `.w3x` 跑通，产出 `.edited.w3x`，WE 能打开且单位/地形不丢；diff 可读、可回滚、round-trip 自检通过 |
-| **P1** | ④ 路线 ④ 索引与检索；⑤ 路线 ① 碎片库（先手工 1 片，再谈自动生成）；⑥ 双执行层 `map_*` 适配（forge / `wc3`） | ④ 零解析也能出成果；① 是路线 ②③ 的基础；⑥ 解掉 GPL 单点依赖 | 559 张图索引可查；1 个手写碎片贴进空图后 WE 可走；同一 IR diff 能通过两种适配器落到副本 |
-| **P2** | ⑦ 路线 ② 自动过滤（含建筑判定）；⑧ 路线 ③ `wcc.map.seed`；⑨ 剧情 IR ↔ `war3map.lua` / `wtg` 联动 | 依赖 P0 字典与 P1 管线 | 「排除人物物品、保留地表树林建筑」在 3 张不同图上结果正确；seed 可复现；AI 写的一章剧情能在游戏里跑起来并被 `lua_check` 通过 |
+| **M0**（原 P0，地图子项目阶段） | ① 补 `wcc-object-ids.md`（单位/建筑/物品分类 + 四字码）；② `wcc.map.snapshot` + `wcc.map.diff` + `wcc.map.verify`；③ 打通 **1 张**官方 `Scenario` 小图的「读 → IR → 写回副本 → WE 打开 → Save → Test Map」 | 没有分类字典，借鉴流过滤不成立；没有快照/diff，任何写图都不安全；没有端到端，其余全是纸面 | 拿一张真实 `.w3x` 跑通，产出 `.edited.w3x`，WE 能打开且单位/地形不丢；diff 可读、可回滚、round-trip 自检通过 |
+| **M1**（原 P1） | ④ 路线 ④ 索引与检索；⑤ 路线 ① 碎片库（先手工 1 片，再谈自动生成）；⑥ 双执行层 `map_*` 适配（forge / `wc3`） | ④ 零解析也能出成果；① 是路线 ②③ 的基础；⑥ 解掉 GPL 单点依赖 | 559 张图索引可查；1 个手写碎片贴进空图后 WE 可走；同一 IR diff 能通过两种适配器落到副本 |
+| **M2**（原 P2） | ⑦ 路线 ② 自动过滤（含建筑判定）；⑧ 路线 ③ `wcc.map.seed`；⑨ 剧情 IR ↔ `war3map.lua` / `wtg` 联动 | 依赖 P0 字典与 P1 管线 | 「排除人物物品、保留地表树林建筑」在 3 张不同图上结果正确；seed 可复现；AI 写的一章剧情能在游戏里跑起来并被 `lua_check` 通过 |
 | **持续** | 修 §2.6 的文档虚标；`AGENTS.md` / steering 契约；不分发暴雪资产 | 你一贯要求文档真实 | 仓库内不再出现「已有 `.w3x`」「build 打进 w3x」这类过期声明 |
 
 ---

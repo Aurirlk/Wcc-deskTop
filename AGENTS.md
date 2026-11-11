@@ -54,8 +54,11 @@ maxChars: 2600
   （steering 条件注入 / injector 按需工具 / budget 停止条件 / scratch 卸载 /
   hooks 门禁与报错回喂），`server.js` 暴露 `/harness/*` 并共用同一实例。
   它仍零 npm 依赖、不进 workspaces，CLI 可独立运行。
-  未完成的是 P2 进图、P3 打包分发（见 `docs/NEXT-DEVELOPMENT-PLAN.md` §11）。
+  未完成的是 P1.5 收尾、P2 进图、P3 打包分发（见 `docs/NEXT-DEVELOPMENT-PLAN.md`；
+  P0/P1 执行记录见其附录 A）。
 - `build_map` 只产 `dist/build/war3map.lua` 脚本包，**不产 `.w3x`**；仓库零 `.w3x`。
 - 本机 Electron 二进制缺失，`dev:desktop` 起不来；sidecar / check / harness 不依赖它。
-- 本机 War3 1.26 只支持 JASS，`war3map.lua` 不能在本机试玩。目标补丁决策见
-  `docs/MAP-COMPILE-PIPELINE.md` §5.3（**未拍板前 P2 全部返工风险**）。
+- 本机 War3 1.26 只支持 JASS，`war3map.lua` 不能在本机试玩。
+  **第 0 号决策已拍板：B+A 双轨** —— 以 1.31+ / Lua 为开发主线，本机 1.26 只读保留、
+  不升级不替换；1.31+ 验证环境由用户自备。`manifest.json` 记录 `targetPatch` 与 `language`。
+  排期见 `docs/NEXT-DEVELOPMENT-PLAN.md`，P2 阶段 A/B 按环境就绪条件触发。

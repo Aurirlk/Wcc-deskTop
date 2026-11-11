@@ -2,7 +2,9 @@
 
 > 魔兽争霸3战役 · **桌面 AI Harness**（WorkBuddy 式）· Lua 1.31+
 >
-> **三处已同步**：本地 `main`、GitHub <https://github.com/Aurirlk/Wcc-deskTop>、Gitee **私有**仓库 <https://gitee.com/wei-kaijie/Wcc-deskTop>（项目仍是半成品，刻意不公开）。2026-11-10 以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，三处 `main` 均已对齐；GitHub **不再**停在 `12b9169`。
+> **单一逻辑数据源**：本地 `main`、GitHub <https://github.com/Aurirlk/Wcc-deskTop>、Gitee **私有**仓库 <https://gitee.com/wei-kaijie/Wcc-deskTop>（项目仍是半成品，刻意不公开）是**同一份数据的三处副本**，不再区分主仓库 / 镜像 / 谁更新；每次推送两端同时同步（`npm run sync` / `npm run sync:check`）。最新 HEAD 一律以 `git log -1` 为准。
+>
+> <sub>历史快照（2026-11-10）：当日曾「以 Gitee 最新提交为基准合并 GitHub 原分叉与本地改动」，该叙事仅作沿革记录，不是现行口径。</sub>
 > 开发主线与下一步排期见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)；换机、凭据与归档见 [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) §1。最新 HEAD 一律以 `git log -1` 为准。
 
 > 🎮 让 AI 成为你的魔兽争霸3战役开发搭档
@@ -50,19 +52,21 @@ code .
 
 ### 第一个战役脚本
 
-1. 在 World Editor 中创建一个触发器，内容为：
-   ```lua
-   require("src.main")
-   ```
+> ⚠️ **进图方式（2026-11-11 校正）**：WC3 原生 Lua **没有 `require`**。本文与
+> `wcc-skill/` 示例里的 `require("src.*")` 只用于**源码组织**，`build-map.js` 会把依赖
+> 内联成单文件 `dist/build/war3map.lua`（自造 `__wcc_require`）。
+> **不要在 World Editor 触发器里写 `require("src.main")`**；直接把 `war3map.lua` 全文
+> 粘贴进地图脚本，或走 P2 阶段 B 的 E3 durable 双写。需 **1.31+ 客户端**；本机 1.26 只支持 JASS，不能直接试玩。
 
-2. 创建 `src/main.lua`：
+1. 编写 `src/main.lua`：
+
    ```lua
    local core = require("src.lib.wcc-core")
    local dialogue = require("src.lib.wcc-dialogue")
-   
+
    -- 初始化WCC
    core.Log("WCC 已加载！")
-   
+
    -- 创建一段对话
    dialogue.Play({
        {speaker = "阿尔萨斯", text = "我们到了，斯坦恩布莱德。"},
@@ -70,7 +74,9 @@ code .
    })
    ```
 
-3. 保存并运行游戏测试！
+2. 运行 `build_map`，得到 `dist/build/war3map.lua` 与 `src-tree/`。
+
+3. 在 World Editor 的**地图脚本**中粘贴 `war3map.lua` 全文，保存并运行游戏测试！
 
 ## 📚 核心组件
 
@@ -139,7 +145,7 @@ node harness/bin/wcc-harness.mjs tui --static
 > scratch 卸载、hooks 质量门禁与报错回喂），并由 `server.js` 暴露 `/harness/*` 供桌面与 TUI 共用同一实例。
 > 它仍保持**零 npm 依赖、不进 npm workspaces**，上面的 CLI 命令依旧可独立运行。
 > 实现细节见 [docs/HARNESS-IMPLEMENTATION.md](docs/HARNESS-IMPLEMENTATION.md)，
-> P1 验收记录见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) §11。
+> P1 验收记录见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) 附录 A。
 
 模型（可选，Sidecar 环境变量）：
 
@@ -154,9 +160,9 @@ AI会自动生成符合WCC规范的代码！
 ## 文档
 
 - [AGENTS.md](AGENTS.md) — **仓库级 Agent 契约**：唯一入口指针、工程约定、红线（规范权威仍是 `wcc-skill/skill.md`）
-- [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) — **下一步开发计划（唯一排期依据）**：现状基线、P0→P3、第 0 号决策
+- [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md) — **下一步开发计划（唯一排期依据）**：现行基线、P1.5→P4、双轨决策、附录 A 执行记录
 - [docs/P0-DISPOSITIONS.md](docs/P0-DISPOSITIONS.md) — P0 悬空项处置结论（`@wcc/shared` 冻结 / `wcc-hotreload` 环境限制）
-- [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) — **换机迁移清单**：clone → 依赖 → 回归验证，不入库的本地配置、必须单独带走的数据、目标补丁决策  
+- [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) — **换机迁移清单**：clone → 依赖 → 回归验证，不入库的本地配置、必须单独带走的数据、1.31+ 环境就绪检查  
 - [docs/DEPLOYMENT-SHORTCUTS.md](docs/DEPLOYMENT-SHORTCUTS.md) — **部署快捷方式建议**：本机桌面实测、换机失效原因、三层入口模型、最小快捷方式集、`scripts/create-shortcuts.py` 用法与红线  
 - [docs/MAP-GENERATION-PLAN.md](docs/MAP-GENERATION-PLAN.md) — **地图生成与优化计划**：拼图/借鉴/随机/素材库四路线、人物摆放与触发器的代码凭据、Python+Lua+WE 外部支持、Warcraft 3 MCP Server、统一 IR 架构  
 - [docs/MAP-COMPILE-PIPELINE.md](docs/MAP-COMPILE-PIPELINE.md) — **编译链专项**：文本化/打包/编译三层澄清、`w2l`/`grill`/`jasshelper`/WE Save 命令证据、MCP Server 源码级档案、本机 1.26 版本硬约束、中间文件目录契约与 P0 验收  

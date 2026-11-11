@@ -4,6 +4,10 @@ mode: always
 priority: 100
 maxChars: 4000
 ---
+> **⚠️ require 消歧（2026-11-11）**：本文示例里的 `require("src.*")` 是 **WCC 源码组织方式**，
+> 由 `build-map.js` 内联成单文件 `war3map.lua`（自造 `__wcc_require`）。WC3 原生 Lua **没有 require**，
+> **不要在 World Editor 触发器里写 `require("src.main")`**；进图请用 `dist/build/war3map.lua` 全文。
+
 # WCC AI 技能包总纲 (Skill Package Overview)
 
 > 本文档定义了 AI 助手在魔兽争霸3战役开发中的角色、约束和行为规范。

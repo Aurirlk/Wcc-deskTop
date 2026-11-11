@@ -16,6 +16,7 @@
     "sidecar": "node packages/wcc-sidecar/src/server.js",
     "sync": "node scripts/sync-remotes.mjs",
     "sync:check": "node scripts/sync-remotes.mjs --check-only",
+    "docs:check": "node scripts/check-doc-consistency.mjs",
     "postinstall": "node scripts/optional-electron.js"
   },
   "engines": {

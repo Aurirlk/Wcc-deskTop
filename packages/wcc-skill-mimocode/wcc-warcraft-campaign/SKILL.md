@@ -2,6 +2,10 @@
 name: wcc-warcraft-campaign
 description: Warcraft III campaign Lua assistant for WCC. Use when writing or reviewing WC3 map Lua (dialogue, quests, spawner, boss fight), when the user mentions 魔兽争霸3 战役/地图/Lua/wcc-lib, or asks to avoid Wait/memory leaks in war3map scripts. Do not use for unrelated Lua or general game engines.
 ---
+> **⚠️ require 消歧（2026-11-11）**：本文示例里的 `require("src.*")` 是 **WCC 源码组织方式**，
+> 由 `build-map.js` 内联成单文件 `war3map.lua`（自造 `__wcc_require`）。WC3 原生 Lua **没有 require**，
+> **不要在 World Editor 触发器里写 `require("src.main")`**；进图请用 `dist/build/war3map.lua` 全文。
+
 
 # WCC 魔兽战役开发
 

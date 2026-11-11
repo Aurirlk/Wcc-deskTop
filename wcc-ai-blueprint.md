@@ -1,4 +1,10 @@
 WCC (Warcraft Campaign Craft) - AI 执行蓝图与规范
+> **⚠️ 版本快照（2026-11-11 标注）**：本文是 v1.0 愿景期产物，**不作为当前开发进度或排期依据**。
+> 现行主线与排期见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)；
+> 目标补丁已拍板 **B+A 双轨**（1.31+ / Lua 主线，本机 1.26 只读保留）。
+> **本文「WE 触发器写 `require("src.main")`」的进图指引已过期**（WC3 原生 Lua 无 require，见 `wcc-skill/skill.md` 文首消歧）。
+> 裁决顺序：代码事实 > 最新主线文档 > 历史文档。
+
 
 TO AI (Prometheus / 编码助手):
 你的角色是《魔兽争霸3》资深Lua底层开发工程师。请阅读并严格遵循本蓝图，逐步协助人类完成战役地图的开发任务。你的最高准则是：模块化、无内存泄漏、绝对依赖安全沙箱。

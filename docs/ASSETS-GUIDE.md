@@ -9,14 +9,14 @@
 
 | 素材类别 | 当前真实状态 | 判定 |
 |---|---|---|
-| 示例战役地图 | `examples/demo-campaign/README.md` 声称有 `demo-campaign.w3x`，**仓库内零 `.w3x`/`.w3m` 文件** | 🔴 README 虚标，端到端无法验证 |
+| 示例战役地图 | `examples/demo-campaign/README.md` 曾声称有示例地图文件，**仓库内零 `.w3x`/`.w3m` 文件** | 🔴 README 虚标，端到端无法验证 |
 | 章节示例 | 只有 `chapter_01.lua` + `main.lua`（1 章）；`PROJECT-PLAN.md` Phase 5 计划 3 章 | 🟠 few-shot 严重不足 |
 | 战役数据表 | `tables-sample.json`：2 个自定义单位 / 1 波刷怪 / 2 句对话 / 1 个任务 | 🔴 太薄，AI 学不到格式 |
 | 物编 ID 字典 | 单位/物品/技能四字码、模型路径、图标路径、区域名 → **零** | 🔴 AI 幻觉 `'hfoo'`/`'n001'` 的根因 |
-| 测试底图 | 零 | 🔴 无法跑 `require("src.main")` 闭环 |
+| 测试底图 | 零 | 🔴 无法跑「脚本包 → 真实地图」闭环 |
 | 游戏美术资产 | 零（模型/贴图/图标/音效） | ✅ 刻意合规：ADR §八「不分发暴雪资产」 |
 | 知识素材 | `wcc-skill/` 3 knowledge + 4 patterns；`vendor/wc3-lua-annotations` 4635 行 | ✅ 全项目最厚的一块，是真正的资产 |
-| 参考实现 | 仅 `wcc-lib/` 13 个自研 Lua 模块 | 🟠 无外部生态参照 |
+| 参考实现 | 仅 `wcc-lib/` 11 个自研 Lua 模块 / 1848 行 | 🟠 无外部生态参照 |
 
 **结论**：缺的不是「好看的模型」，而是**让 AI 写对代码所需的领域数据 + 可跑的示例**。
 美术资产按你自己的 ADR 本来就不该进仓库，不应算缺口。
@@ -114,11 +114,11 @@ WCC 的 AI 最容易出错的地方不是「不会写 Lua」，而是**瞎编魔
 
 ## 5. 最小行动清单（按性价比排序）
 
-1. **补 `demo-campaign.w3x`** — 从 `Maps\Scenario\` 复制一张干净小图，WE 里启用 Lua、触发器只留 `require("src.main")`，
-   或直接借 War3Net 生成空图。同时修掉 README 里「已有 .w3x」的虚标。
+1. **选一张真实 `.w3x` 作底图** — 按 [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md) 两阶段 P0 验收，从 `Maps\Scenario\` 选一张非加密官方小图，只产出 `.edited.w3x` 副本（原图不动）。
+   **不要**补一个虚构的示例地图文件，也不要在 WE 触发器里写 `require("src.main")`。
 2. **扩充 `tables-sample.json` 到 3 章** — 对话 / 任务 / 刷怪 / Boss 各给完整样本，AI 才有格式可依。
 3. **提一份物编 ID 表** — `wcc-skill/knowledge/wc3-object-ids.md`，这是 ROI 最高的一项。
-4. **补 `build_map` 写二进制 `.w3x`** — 借 War3Net 的 MPQ/地图序列化思路，当前 `docs/DEVELOPMENT-NOTES.md` §88 明确写着「build 不写二进制 w3x」。
+4. **进图能力按两阶段 P0 建设** — 先文本 IR + `wcc.map.snapshot` / `diff` / `verify`，再阶段 A 数据改写、阶段 B E3 Lua 注入；`build_map` 目前只产 `war3map.lua` 脚本包、不写二进制 `.w3x`（见 [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md)）。
 5. **3 章 demo + 端到端测试** — 有了底图才能真正跑「生成 → check → 注入 → 进游戏 → 日志回流」。
 
 ---

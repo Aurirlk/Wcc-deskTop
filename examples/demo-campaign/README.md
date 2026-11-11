@@ -1,4 +1,8 @@
 # WCC 示例战役 (Demo Campaign)
+> **⚠️ require 消歧（2026-11-11）**：本文示例里的 `require("src.*")` 是 **WCC 源码组织方式**，
+> 由 `build-map.js` 内联成单文件 `war3map.lua`（自造 `__wcc_require`）。WC3 原生 Lua **没有 require**，
+> **不要在 World Editor 触发器里写 `require("src.main")`**；进图请用 `dist/build/war3map.lua` 全文。
+
 
 > 这是一个完整的示例战役，演示 WCC 系统的基本用法。
 
@@ -34,17 +38,13 @@ demo-campaign/
 
 ## 如何使用
 
-### 1. 打开地图
+### 1. 生成脚本包
 
-在 World Editor 中打开 `demo-campaign.w3x`
+运行 `build_map`，产出 `dist/build/war3map.lua`（+ `src-tree/`）。本目录**不含任何 `.w3x` 地图文件**。
 
-### 2. 查看触发器
+### 2. 导入脚本
 
-地图中只有一个触发器，内容为：
-
-```lua
-require("src.main")
-```
+在 WE 的**地图脚本**中粘贴 `war3map.lua` 全文（或走 P2 阶段 B 的 E3 durable 双写）。WC3 原生 Lua 没有 `require`，**不要**在触发器里写 `require("src.main")`；源码内的 `require("src.*")` 由构建器内联为 `__wcc_require`。
 
 ### 3. 运行测试
 

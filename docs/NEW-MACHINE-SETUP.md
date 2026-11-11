@@ -17,7 +17,7 @@
 
 | 项 | 值 | 备注 |
 |---|---|---|
-| **Gitee 主仓库** | `https://gitee.com/wei-kaijie/Wcc-deskTop.git` | ✅ 2026-11-10 建仓并推送成功；**私有**（项目为半成品，刻意不公开）、`main` |
+| **Gitee 远端（镜像之一）** | `https://gitee.com/wei-kaijie/Wcc-deskTop.git` | ✅ 2026-11-10 建仓并推送成功；**私有**（项目为半成品，刻意不公开）、`main` |
 | GitHub 官方仓库 | `https://github.com/Aurirlk/Wcc-deskTop.git` | ✅ **已同步**：当日晚间完成三处合并，GitHub 不再停在 `12b9169` |
 | 本地 `origin` | `https://github.com/Aurirlk/Wcc-deskTop.git` | 从失效镜像切到官方地址；本地分支已由 `master` 重命名为 `main` 并跟踪 `origin/main` |
 | 本地 `gitee` | `https://gitee.com/wei-kaijie/Wcc-deskTop.git` | 干净 URL，**不含任何凭据**；推送令牌只走一次性 URL |
@@ -27,7 +27,7 @@
 | 三处同步合并提交 | `d8ccdfb` | ✅ 当日合并结果；此后继续开发，**最新 HEAD 以 `git log -1` 为准** |
 | 作者身份 | `WCC Dev <wcc-dev@users.noreply.github.com>` | 沿用原提交（noreply 形式，不含个人邮箱） |
 
-> 两个 remote 都已配置，`origin` = GitHub、`gitee` = Gitee。推两端时用 `git push origin main` 和 `git push gitee main`（本地分支名为 `main`，远端分支也为 `main`）。
+> 两个 remote 都已配置（`origin` = GitHub、`gitee` = Gitee）。三处 `main` 是**一个逻辑数据源 + 两个镜像**，不再区分主仓库 / 镜像 / 谁更新；**每次推送用 `npm run sync` 一次推两端并校验一致**，只校验用 `npm run sync:check`；禁止只推一端或 `--force`。
 
 仓库是**私有**的，匿名 `git clone` / API 会返回 404 或 401。新机器请用一次性带令牌的 URL clone，然后立刻把凭据从配置里去掉：
 
@@ -71,9 +71,9 @@ set ELECTRON_MIRROR=https://registry.npmmirror.com/-/binary/electron/
 
 ```bash
 npm install
-npm test                 # 基线：27 tests pass
-npm run check            # 基线：13 Lua files, 0 issues
-node --test harness/test/harness.test.js     # 基线：15/15
+npm test                 # 基线：57 tests pass
+npm run check            # 基线：13 files / 0 errors / 3 warnings
+node --test harness/test/harness.test.js     # 基线：19/19
 node harness/bin/wcc-harness.mjs demo       # 离线全链路，不需要 API key
 ```
 
@@ -155,8 +155,10 @@ PowerShell 实测 `war3.exe` / `game.dll` = **1.26.0.6401 经典版**，而 `REA
 3. 🔴 `YElwiddi/warcraft-3-mcp-server` 的 `wct.ts` 只接受 modern 版本标记、`wtg.ts` 的 classic 格式只读不写 → 其招牌能力在本机大概率拒写。
 4. 🔴 本机**没有任何编译器**（无 `w2l` / `jasshelper` / `pjass` / `grill` / `common.j` / `blizzard.j`）。
 
+> **✅ 决策已定（2026-11-11）**：目标补丁已拍板 **B+A 双轨**（1.31+ / Lua 主线，本机 1.26 只读保留）；下面这段是撰写当时的备选讨论（快照）。
+>
 > 换机是处理这个错配的最好时机：**要么新机器装 1.31+ 保住 Lua 资产，要么明确双轨并在 IR 里带 `targetPatch`**。
-> 详见 `docs/MAP-COMPILE-PIPELINE.md` §8 的 10 项待补资料与目标补丁决策。
+> 现行口径：目标补丁**已拍板 B+A 双轨**（1.31+ / Lua 主线，本机 1.26 只读保留）；换机时需确认 1.31+ 验证环境可用，`manifest.json` 带 `targetPatch` 与 `language`。下面 10 项待补资料仍有效。
 
 ---
 
@@ -174,8 +176,8 @@ PowerShell 实测 `war3.exe` / `game.dll` = **1.26.0.6401 经典版**，而 `REA
 
 在新机器执行下面四条，全部符合才算恢复到位：
 
-- [ ] `git log` 能看到本次研究成果的 6 个提交，且 `git remote get-url gitee` 指向私有 Gitee 仓库（不是 gitclone.com）；带凭据的 `git ls-remote gitee main` 的 HEAD 与本地一致
-- [ ] `npm test` 27 pass、`npm run check` 13 files / 0 issues
-- [ ] harness 自测 15/15、`demo` 全链路跑通（离线，无需 key）
-- [ ] 明确记下新机器的目标补丁版本，并回填到 `docs/MAP-COMPILE-PIPELINE.md` 的目标补丁决策
+- [ ] `git remote -v` 含 `origin`（GitHub）与 `gitee` 两个远端；`npm run sync:check` 报三处一致；带凭据的 `git ls-remote gitee main` 的 HEAD 与本地一致
+- [ ] `npm test` 57 pass、`npm run check` 13 files / 0 errors / 3 warnings
+- [ ] harness 自测 19/19、`demo` 全链路跑通（离线，无需 key）
+- [ ] 确认新机器 1.31+ 验证环境已就绪（本机 1.26 只读保留、不升级不替换）；P2 阶段 A/B 按环境就绪条件触发
 - [ ] 桌面入口已用 `scripts/create-shortcuts.py` 重建，且 `--list` 读回的目标全部指向本机真实路径

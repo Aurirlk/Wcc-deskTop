@@ -1,6 +1,6 @@
 # P0 悬空项处置结论（2026-11-10）
 
-> 对应 `NEXT-DEVELOPMENT-PLAN.md` §3.2 的 N5 / N6，以及 P0-6 / P0-7。
+> 对应 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) 附录 A 的 N5 / N6（均已处置），以及 P0-6 / P0-7。
 > 本文只记录**结论与依据**，不改历史快照、不新增第二份规范。
 
 ## N5 — `@wcc/shared`：冻结，不补齐也不删除
@@ -36,7 +36,7 @@ P3 打包时二选一：① 若确需共享类型 → 先对齐 IPC 名再 `tsc`
 **处置**：
 1. 在文件头加醒目注释，写明目标环境限制与正确用途（仅开发期调试思路，线上战役禁止 `Init`）。
 2. `build-map.js` 的产物 `README.md` 增加一条说明：`src-tree/` 中的 `wcc-hotreload.lua` 不可用于 WC3。
-3. 在 `docs/NEXT-DEVELOPMENT-PLAN.md` §3.2 N6 标注「已处置」。
+3. 在 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) 附录 A 的 N6 标注「已处置」（已履行）。
 4. **不删除**：用户已明确要求保留 `wcc-lib` 与历史资产；且它作为「思路记录」有价值。
 
 ## P0-6 — `AGENTS.md`

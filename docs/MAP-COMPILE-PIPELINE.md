@@ -1,5 +1,7 @@
 # 从「中间可编译文件」到「可玩地图」：编译链专项调研
 
+> **⚠️ 历史快照（2026-11-11 标注）**：下面这段「以 Gitee 最新提交为基准合并 GitHub 原分叉」是 11-10 当日叙事，**不是现行口径**。现行：本地 / GitHub / Gitee 三处 `main` 是**一个逻辑数据源 + 两个镜像**，不再区分主仓库 / 镜像 / 谁更新；每次推送用 `npm run sync`，只校验用 `npm run sync:check`。见 [AGENTS.md](../AGENTS.md)。
+>
 > **2026-11-10 仓库状态补记（当日二次校正）**：本文撰写时「未 git commit / 未推送 / origin=gitclone.com」均为当时状态；当天成果已全部提交（`7fe0922`..`ef5a9be`，7 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开）。**当日稍后已完成三处同步**：以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，本地 `main`、GitHub `Aurirlk/Wcc-deskTop`、Gitee `wei-kaijie/Wcc-deskTop` 的 `main` 均已对齐（合并提交 `d8ccdfb`）；GitHub **不再**停在 `12b9169`。
 > 此后仓库持续开发，**最新 HEAD 一律以 `git log -1` / `git ls-remote` 为准，本文不再跟踪具体 commit**；开发主线与排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，换机说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
@@ -309,7 +311,7 @@ testMap(mapPath, exePath?)      → spawn(exe, ['-launch','-window','-loadfile',
 
 > 🟠 YDWE 在 1.20/1.24 上提供内置 Lua 引擎，但那是**保存期物编生成与调试**（`require 'slk'`、Lua-Debug 示例图），不是把 `war3map.lua` 当游戏主脚本；1.26 兼容模式的社区说明也写明「only Jass」。**二手资料，未实测，不作为可用依据。**
 
-### 5.3 因此必须先拍板：目标版本三选一
+### 5.3 目标版本三选一（**2026-11-11 已拍板：B+A 双轨**）
 
 | 方案 | 做法 | 代价 | 适配 MCP Server？ |
 |---|---|---|---|
@@ -317,26 +319,31 @@ testMap(mapPath, exePath?)      → spawn(exe, ['-launch','-window','-loadfile',
 | **B. 另装 1.27a/1.31+ 客户端**（推荐做验证机） | 本机 `change\` 已有 1.27a/1.27b 包；或直接装 1.31+ 测试端，**不动现有 1.26 游戏与存档** | 🟠 需要下载/安装、占空间；1.27 仍无 Lua，需真 1.31+ | ✅ 1.31+ 可用 |
 | **C. 只做离线生成，试玩外包** | WCC 只产 `.edited.w3x` + 编译脚本包，明确声明「需 1.31+ 客户端试玩」 | 🟠 本机无法闭环验收，P0 端到端做不了 | 🟠 生成可用、验证受限 |
 
+> **✅ 决策已定（2026-11-11）**：用户拍板 **B+A 双轨** —— 1.31+ / Lua 为开发主线，本机 1.26 只读保留、不升级不替换；1.31+ 验证环境由用户自备；`manifest.json` 记录 `targetPatch` 与 `language`；P2 阶段 B 走 E3 Lua 注入。下面三选一表与「我倾向」段落是**撰写当时的决策讨论（快照）**。
+>
 > 我倾向 **B + A 并行**：用一台 1.31+ 客户端打通端到端闭环，同时把「JASS 输出」作为可选项保留，避免把整个项目绑死在单一补丁上。这也和 Wurst 官方「patch-aware」的设计一致。**这一步需要你决定，我不替你装游戏、不升级现有 1.26。**
 
 ---
 
 ## 6. 面向 WCC 的推荐管线：把 IR 落成「可编译中间文件」
 
-### 6.1 目录契约（🔴 设计稿，未实现）
+### 6.1 目录契约（**唯一权威**；🔴 尚未实现）
+
+> 本节是 `.wcc/ir/` 目录契约的**唯一权威**；`MAP-GENERATION-PLAN.md` 与 `HARNESS-IMPLEMENTATION.md` 只保留指向本节的指针，不再各自定义目录树。
 
 ```
 .wcc/ir/<map-id>/
-  manifest.json          # schema 版本、源图 sha256、目标 wc3Patch、脚本语言(jass|lua)、
+  manifest.json          # schema 版本、源图 sha256、targetPatch="1.31+"、language="lua"、
                          #   每个内部文件「由哪个序列化器产出 + 输出 hash」
   terrain.json           # w3e tilepoint / 高度 / 水 / 悬崖
   doodads.json           # war3map.doo
   units.json             # war3mapUnits.doo（含建筑/人物/物品分类，依赖 wc3-object-ids.md）
   regions.json / cameras.json
+  quests.json / dialogues.json / triggers.json   # 剧情层
   objects/*.ini          # 物编修改表（对齐 w3x2lni 的 table/ 9 张 ini）
   script/
-    war3map.j            # 目标 1.26 时 AI 写这里
-    war3map.lua          # 目标 1.31+ 时 AI 写这里
+    war3map.j            # 【可选支线】仅显式切 E2 时启用，本轮不施工
+    war3map.lua          # 【主线】1.31+ / Lua，AI 写这里
     fragments/*.lua      # WCC 现有 wcc-lib 片段（按目标语言选择是否转译）
   patches/               # IR 级 diff（可审批、可回滚）
   build/                 # 【生成物，不进 git】
@@ -347,7 +354,7 @@ testMap(mapPath, exePath?)      → spawn(exe, ['-launch','-window','-loadfile',
 
 **三条硬约定**：
 1. **AI 只写 `*.json` / `*.ini` / `script/*` 文本**，永不直接生成二进制，也永不直接生成坐标矩阵（沿用 `MAP-GENERATION-PLAN.md §3.0`）。
-2. **`manifest.json` 必须记录目标 patch 与脚本语言**——§5 的教训，版本错配比代码 bug 更致命。
+2. **`manifest.json` 必须记录 `targetPatch` 与 `language`**——§5 的教训，版本错配比代码 bug 更致命。
 3. **`build/` 全量可重建**：任何一步失败都从 IR 重来，不手工修二进制。
 
 ### 6.2 三条可切换的编译出口
@@ -412,7 +419,7 @@ testMap(mapPath, exePath?)      → spawn(exe, ['-launch','-window','-loadfile',
 | 7 | YDWE 对 1.26 的实际兼容性与「Lua 能否作主脚本」 | 🟠 二手且互相矛盾 | 不据此下结论 |
 | 8 | 559 张图里有多少是加密/受保护图 | 🔴 未扫描 | 索引时优雅降级 |
 | 9 | `WC3FORGE_EXE` 在当前 shell 仍读不到 | 🟠 前篇已记 | 需新登录 / 重启资源管理器；本轮未启动 forge |
-| 10 | 目标补丁（1.26 / 1.31+ / 双轨） | 🔴 **未拍板** | 见 §5.3，这个不定，B 阶段无法设计 |
+| 10 | 目标补丁（1.26 / 1.31+ / 双轨） | ✅ **已拍板：B+A 双轨** | 1.31+ / Lua 主线，本机 1.26 只读保留；1.31+ 环境由用户自备，阶段 B 按条件触发 |
 
 ---
 
@@ -447,9 +454,11 @@ testMap(mapPath, exePath?)      → spawn(exe, ['-launch','-window','-loadfile',
 
 ---
 
-## 11. 要你拍板（比前篇更靠前的一个决定）
+## 11. 决策记录（撰写当时的候选方案；目标补丁已定案）
 
-1. **目标补丁选哪个？** 这是本轮新增的第 0 号决策：**守 1.26 走 JASS**（保机器、要重写 Lua 资产）／**另装 1.31+ 验证机走 Lua**（保资产、要装客户端）／**双轨**（`manifest.json` 带 `targetPatch`，最稳但工作量最大）。我倾向双轨，先装 1.31+ 打通闭环。
+> **⚠️ 历史快照（2026-11-11）**：本节第 1 项（目标补丁）已拍板为 B+A 双轨；第 2 项（编译器选型）与第 3 项（MCP Server 接入）在 1.31+ 验证环境就绪前不投入。现行排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)。
+>
+1. **目标补丁选哪个？** 这是本轮新增的**第 0 号决策（已拍板：双轨）**：**守 1.26 走 JASS**（保机器、要重写 Lua 资产）／**另装 1.31+ 验证机走 Lua**（保资产、要装客户端）／**双轨**（`manifest.json` 带 `targetPatch`，最稳但工作量最大）。我倾向双轨，先装 1.31+ 打通闭环。
 2. **编译器用谁？** `w2l obj`（GPL，最接近「文件夹→地图」）／`grill build`（Apache，工程化最完整但要换语言）／`jasshelper`（老版本最贴，依赖最杂）／**只用 MIT 的 `mdx-m3-viewer` 自己打包**（最贴 WCC，但没有脚本编译能力）。我倾向：**打包走 MIT 自研，脚本编译先接 `w2l`/`grill` 外部进程**。
 3. **Warcraft 3 MCP Server 还要不要接？** 许可上最合适，但本机 1.26 上它的两个招牌能力（durable 脚本 / GUI 触发器）都因格式版本不可用。建议**先不投入适配，等目标补丁定了再说**；或只复用它的 `map.ts` / `wtg.ts` 思路（MIT，可抄），不整包引入。
 

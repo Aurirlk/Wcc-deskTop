@@ -1,4 +1,10 @@
 # Warcraft Campaign Craft (WCC)
+> **⚠️ 版本快照（2026-11-11 标注）**：本文是 v1.0 愿景期产物，**不作为当前开发进度或排期依据**。
+> 现行主线与排期见 [docs/NEXT-DEVELOPMENT-PLAN.md](docs/NEXT-DEVELOPMENT-PLAN.md)；
+> 目标补丁已拍板 **B+A 双轨**（1.31+ / Lua 主线，本机 1.26 只读保留）。
+> **本文「WE 触发器写 `require("src.main")`」的进图指引已过期**（WC3 原生 Lua 无 require，见 `wcc-skill/skill.md` 文首消歧）。
+> 裁决顺序：代码事实 > 最新主线文档 > 历史文档。
+
 
 ## 🌟 项目愿景 (Vision)
 
@@ -12,7 +18,7 @@ WCC 是一个基于 LLM（大型语言模型）和 Lua 的《魔兽争霸3》战
 
 - **环境**: 魔兽争霸3 v1.31+ (或重制版)，开启 Lua 模式。
 
-- **入口**: 在WE中仅保留一个触发器，内容为 `require("src.main")`。
+- **入口**（⚠️ 已过期，见文首快照横幅）：早期设想在 WE 中放一个引导触发器；现行做法是粘贴 `dist/build/war3map.lua` 全文到地图脚本。
 
 ### 2. 核心代码层 (WCC-Lib)
 

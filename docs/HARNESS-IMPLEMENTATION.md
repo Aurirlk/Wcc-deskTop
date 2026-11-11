@@ -1,10 +1,12 @@
 # WCC AI 开发 Harness · 实现与讨论
 
+> **⚠️ 历史快照（2026-11-11 标注）**：下面这段「以 Gitee 最新提交为基准合并 GitHub 原分叉」是 11-10 当日叙事，**不是现行口径**。现行：本地 / GitHub / Gitee 三处 `main` 是**一个逻辑数据源 + 两个镜像**，不再区分主仓库 / 镜像 / 谁更新；每次推送用 `npm run sync`，只校验用 `npm run sync:check`。见 [AGENTS.md](../AGENTS.md)。
+>
 > **2026-11-10 仓库状态补记（当日二次校正）**：本文撰写时「未 git commit / 未推送 / origin=gitclone.com」均为当时状态；当天成果已全部提交（`7fe0922`..`ef5a9be`，7 个）并推送到 Gitee **私有**仓库 `wei-kaijie/Wcc-deskTop`（项目为半成品，刻意不公开）。**当日稍后已完成三处同步**：以 Gitee 最新提交为基准合并了 GitHub 原分叉与本地改动，本地 `main`、GitHub `Aurirlk/Wcc-deskTop`、Gitee `wei-kaijie/Wcc-deskTop` 的 `main` 均已对齐（合并提交 `d8ccdfb`）；GitHub **不再**停在 `12b9169`。
 > 此后仓库持续开发，**最新 HEAD 一律以 `git log -1` / `git ls-remote` 为准，本文不再跟踪具体 commit**；开发主线与排期见 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md)，换机说明见 [NEW-MACHINE-SETUP.md](NEW-MACHINE-SETUP.md) §1。
 
 
-> **⚠️ P1 状态更新（2026-11-10 第三次校正）**：本文 §0/§1 中「未改动 agent.js / server.js」、「harness 是可独立运行的旁路层，还没接进主 Agent Loop」均为**撰写当时**状态，现已改变：`createHarness()` 已接入 `packages/wcc-sidecar/src/agent.js`（steering / injector / budget / scratch / hooks / 工具路由），`server.js` 新增 `/harness/*` 端点并共用同一实例。§7 第 1/2/4 项已转为 ✅；第 5–8 项（打包、真 forge 联调、独立 MCP server、TUI 真机验收）仍属 P3/P4 未完成。**本文保留为实现记录快照，进度以 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) §11 为准。**
+> **⚠️ P1 状态更新（2026-11-10 第三次校正）**：本文 §0/§1 中「未改动 agent.js / server.js」、「harness 是可独立运行的旁路层，还没接进主 Agent Loop」均为**撰写当时**状态，现已改变：`createHarness()` 已接入 `packages/wcc-sidecar/src/agent.js`（steering / injector / budget / scratch / hooks / 工具路由），`server.js` 新增 `/harness/*` 端点并共用同一实例。§7 第 1/2/4 项已转为 ✅；第 5–8 项（打包、真 forge 联调、独立 MCP server、TUI 真机验收）仍属 P3/P4 未完成。**本文保留为实现记录快照，进度以 [NEXT-DEVELOPMENT-PLAN.md](NEXT-DEVELOPMENT-PLAN.md) 附录 A 为准。**
 
 > 2026-11-09 晚 · 把此前四份调研稿（`HARNESS-REFERENCE.md` / `FEASIBILITY-REVIEW.md` / `FORGE-INTEGRATION.md` / `ASSETS-GUIDE.md`）的结论**落成可运行代码**，并回答「真做 Harness 需要什么脚本 / 工具注入怎么配合 / TUI 怎么做 / 隔壁 WC3 能抄什么」。
 > 本文是**实现记录**，不是规划稿。所有「✅」都有对应文件与实测命令；所有「🔴 / 🟠」都明确列出未做。
@@ -17,7 +19,7 @@
 |---|---|
 | ✅ 已落地 | `harness/` 独立零依赖层：12 个 JS 模块 + 1 个 CLI + 15 个自测用例，可离线运行 |
 | ✅ 已落地 | `wcc-skill/` 8 份文档新增 steering front matter（**只加头部元数据，正文 0 改动**，`git diff --stat` = 8 files / +50 lines / 0 deletions） |
-| ✅ 已验证 | `node --test harness/test/harness.test.js` → **15/15 pass**；`npm test` → 25+2 = **27 pass**；`npm run check` → **13 files, 0 issues** |
+| ✅ 已验证（撰写当时基线） | harness 自测 15、`npm test` 27、`npm run check` 13 files / 0 issues；**现行基线 57 / 19 / 0 errors / 3 warnings，见主计划 §1** |
 | ✅ 已验证 | `node harness/bin/wcc-harness.mjs demo` 全链路离线跑通（steering → spec → scratch → hook → 工具注入 → 预算 → TUI 静态渲染） |
 | 🟠 未接入 | **未改动** `packages/wcc-sidecar/src/agent.js`、`server.js`、`tools.js`；现有 Agent Loop 仍全量注入 skill、仍手动 check、仍 `guard < 8` 硬循环 |
 | 🟠 未接入 | `harness/` 故意**不进 npm workspaces**（根 `package.json` 未改、`package-lock.json` 未因本次新增而重生成），保持零依赖、零回归 |
@@ -204,7 +206,7 @@ turn.start hook
 | 对 Harness 的启示 | WCC 现状 / 下一步 |
 |---|---|
 | **AI 永远不要直接改二进制 `.w3x`**；应先改文本 IR，再 build 回地图 | 现在 Sidecar 有 `build_map` / `table_import`，但**没有独立的 `.wcc/ir/` 文本中间表示** 🔴 |
-| **IR 可 diff / 可回滚 / 可 code review**，是「AI 改图可信」的前提 | 建议：`.wcc/ir/{units,quests,dialogues,triggers}.json` + `wcc.ir.diff` / `wcc.map.snapshot` 两个脚本 |
+| **IR 可 diff / 可回滚 / 可 code review**，是「AI 改图可信」的前提 | 建议 `wcc.map.snapshot` / `wcc.map.diff` / `wcc.map.verify` 三脚本；**IR 目录契约唯一权威见 [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md)**，本文不复述目录树 |
 | **编辑期无损、发布期优化分离** | `lua_check` 应在每次写入后跑（编辑期），压缩/合并只在 `build` 时做；目前两者都混在 `build_map` 里 🟠 |
 | **元数据驱动校验**（字段类型） | 物编字段类型表可反哺 `codegen_run` 的参数校验，减少 AI 编造字段 |
 
@@ -284,7 +286,7 @@ node --test harness/test/harness.test.js
 :: 15 tests / 15 pass / 0 fail
 
 npm test
-:: @wcc/sidecar 25 pass + @wcc/lua-check 2 pass = 27 pass
+:: 撰写当时 @wcc/sidecar 25 + @wcc/lua-check 2 = 27；现行基线见主计划 §1（57 pass）
 
 npm run check
 :: wcc-lua-check: 13 files, 0 issues, ok=true
