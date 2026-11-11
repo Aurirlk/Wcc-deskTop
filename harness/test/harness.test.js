@@ -7,7 +7,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 import {
   parseFrontMatter, globToRegExp, matchesGlob, collectSteering, selectSteering, renderSteering, createSteering, annotationFor,
@@ -17,7 +19,8 @@ import {
   createHookBus, installDefaultHooks, EVENTS,
   createToolInjector, mergeCatalog, TOOL_CATALOG,
   createPipeline, withBudget,
-  SCRIPT_MANIFEST, findScript, runScript, probeForge,
+  SCRIPT_MANIFEST, findScript, runScript, describeScripts, probeForge,
+  unifiedDiff, mapSnapshot, mapDiff, mapVerify,
   renderStatic, diffPreview, clip, displayWidth, createTui,
   createHarness,
   defaultGateRunner,
@@ -334,3 +337,139 @@ test("TUI: static render, command handling, approval, diff, CJK width", async ()
   assert.match(renderStatic({ events: [{ kind: "ok", text: "hello" }] }, { color: false }), /hello/);
   assert.match(diffPreview("a\nb", "a\nc"), /\+ c/);
 });
+
+// ---------------------------------------------------------------------------
+// P2 / G1 — text-IR gates. These tests use synthetic files only: they prove
+// sha256 / diff / byte-comparison logic, NOT that WE can open a real .w3x.
+// ---------------------------------------------------------------------------
+
+test("P2 mapSnapshot: copies bytes, keeps the source sha256, writes an IR manifest", (t) => {
+  const d = tmp(t);
+  const src = path.join(d, "demo.w3x");
+  const bytes = Buffer.from("FAKE-MAP-BYTES-0001-not-a-real-w3x");
+  fs.writeFileSync(src, bytes);
+  const before = cryptoHash(bytes);
+
+  const r = mapSnapshot({ root: d, map: src });
+  assert.equal(r.ok, true);
+  assert.equal(r.sha256, before);
+  assert.equal(cryptoHash(fs.readFileSync(src)), before, "source must not change");
+  assert.equal(cryptoHash(fs.readFileSync(r.snapshot)), before, "copy must be byte-identical");
+
+  const manifest = JSON.parse(fs.readFileSync(r.manifest, "utf8"));
+  assert.equal(manifest.targetPatch, "1.31+");
+  assert.equal(manifest.language, "lua");
+  assert.equal(manifest.source.sha256, before);
+  assert.equal(manifest.serializersVerified, false);
+  assert.equal(manifest.files[0].producer, "wcc.map.snapshot");
+  assert.equal(typeof manifest.files[0].sha256, "string");
+});
+
+test("P2 mapSnapshot: missing map is rejected, no artifact is written", (t) => {
+  const d = tmp(t);
+  const r = mapSnapshot({ root: d, map: "nope.w3x" });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "map-not-found");
+  assert.equal(fs.existsSync(path.join(d, ".wcc")), false);
+  assert.equal(mapSnapshot({ root: d }).reason, "map-required");
+});
+
+test("P2 mapDiff: unified diff really reverses with git apply -R", (t) => {
+  const d = tmp(t);
+  const oldText = "alpha\nbeta\ngamma\ndelta\n";
+  const newText = "alpha\nBETA\ngamma\ndelta\nepsilon\n";
+  fs.writeFileSync(path.join(d, "old.txt"), oldText);
+  fs.writeFileSync(path.join(d, "new.txt"), newText);
+
+  const r = mapDiff({ root: d, mapId: "demo", from: "old.txt", to: "new.txt", name: "units", rel: "units.json" });
+  assert.equal(r.ok, true);
+  assert.equal(r.removed, 1);
+  assert.equal(r.added, 2);
+  assert.match(r.patch, /^--- a\/units\.json/m);
+  assert.match(r.patch, /^@@ -1,4 \+1,5 @@/m);
+  assert.ok(fs.existsSync(r.patchPath));
+
+  // The patch must be a real, reversible unified diff — not a decorative log.
+  const target = path.join(d, "units.json");
+  fs.writeFileSync(target, newText);
+  // Windows git defaults to core.autocrlf=true, which rewrites the reverted
+  // file as CRLF. Disable it so this is a genuine byte-for-byte reversal.
+  const applied = spawnSync("git", ["-c", "core.autocrlf=false", "apply", "-R", "-p1", r.patchPath],
+    { cwd: d, encoding: "utf8" });
+  assert.equal(applied.status, 0, `git apply -R failed: ${applied.stderr}`);
+  assert.equal(fs.readFileSync(target, "utf8"), oldText);
+});
+
+test("P2 mapDiff: identical IR produces no patch; missing input is rejected", (t) => {
+  const d = tmp(t);
+  fs.writeFileSync(path.join(d, "a.txt"), "same\n");
+  fs.writeFileSync(path.join(d, "b.txt"), "same\n");
+  const same = mapDiff({ root: d, from: "a.txt", to: "b.txt" });
+  assert.equal(same.ok, true);
+  assert.equal(same.identical, true);
+  assert.equal(same.patchPath, null);
+  const missing = mapDiff({ root: d, from: "a.txt", to: "missing.txt" });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.reason, "to-not-found");
+  assert.equal(unifiedDiff("a\n", "a\n").identical, true);
+});
+
+test("P2 mapVerify: byte-identical round-trip passes; one changed byte blocks", (t) => {
+  const d = tmp(t);
+  // Synthetic buffer: proves the comparison logic only, NOT a real .w3x parse.
+  const bytes = Buffer.from([0, 1, 2, 255, 10, 13, 0, 128]);
+  const src = path.join(d, "source.bin");
+  const rebuilt = path.join(d, "rebuilt.bin");
+  fs.writeFileSync(src, bytes);
+  fs.writeFileSync(rebuilt, bytes);
+
+  const ok = mapVerify({ root: d, source: src, rebuilt });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.verified, true);
+  assert.equal(ok.evidence, "byte-for-byte");
+  assert.match(ok.note, /不证明 WE 能打开/);
+
+  const changed = Buffer.from(bytes);
+  changed[3] = 254;
+  fs.writeFileSync(rebuilt, changed);
+  const bad = mapVerify({ root: d, source: src, rebuilt });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.reason, "round-trip-mismatch");
+  assert.equal(bad.blocking, true, "a mismatch must block writing the map");
+  assert.notEqual(bad.sourceSha256, bad.rebuiltSha256);
+});
+
+test("P2 mapVerify: no external serializer fails closed (🔴 not measured)", (t) => {
+  const d = tmp(t);
+  const src = path.join(d, "source.bin");
+  fs.writeFileSync(src, Buffer.from([1, 2, 3]));
+  const r = mapVerify({ root: d, source: src, env: {} });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "external-tool-missing");
+  assert.equal(r.blocking, true);
+  assert.match(r.note, /未实测|round-trip/);
+  assert.equal(mapVerify({ root: d, env: {} }).reason, "source-required");
+});
+
+test("P2 scripts: map handlers are executable, wcc.map.build stays declared-only", (t) => {
+  const d = tmp(t);
+  const list = describeScripts();
+  for (const id of ["wcc.map.snapshot", "wcc.map.diff", "wcc.map.verify"]) {
+    assert.equal(list.find((s) => s.id === id)?.executable, true, id);
+  }
+  assert.equal(list.find((s) => s.id === "wcc.map.build")?.executable, false);
+  assert.equal(runScript("wcc.map.build", { root: d }).reason, "declared-only");
+
+  const src = path.join(d, "demo.w3x");
+  fs.writeFileSync(src, Buffer.from("fake"));
+  const dry = runScript("wcc.map.snapshot", { root: d, args: { map: src }, dryRun: true });
+  assert.equal(dry.dryRun, true);
+  assert.equal(dry.handler, "mapSnapshot");
+  const real = runScript("wcc.map.snapshot", { root: d, args: { map: src } });
+  assert.equal(real.ok, true);
+  assert.equal(real.runBy, "handler");
+});
+
+function cryptoHash(buf) {
+  return crypto.createHash("sha256").update(buf).digest("hex");
+}

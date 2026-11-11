@@ -50,7 +50,7 @@
 | Renderer | 已有 health pill（`model✓`/`forge✓`）、onboarding 引导清单、settings 页（`configGet/configPost`）、forge 会话发现与连接 UI、对话、workbench |
 | Sidecar | `server.js` 约 20 个路由：`/health` `/tools` `/approval/*` `/chat/stream` `/chat` `/history` `/session/*` `/forge/*` `/config` `/experts` `/workbench/*` |
 | 模型 | 默认 `deepseek-chat`（国产、OpenAI 兼容）；`config-store.js` + `onboarding.js` 已提供配置落盘与引导 |
-| 领域层 | `wcc-lib` 11 个 Lua 模块 / 1848 行 + `wcc-skill` + `lua_check`；`npm run check` 13 文件 / 0 errors / 3 warnings（撰写当时 @wcc/sidecar 25 + @wcc/lua-check 2；现行基线见 `docs/NEXT-DEVELOPMENT-PLAN.md` 第一部分现状，60 pass） |
+| 领域层 | `wcc-lib` 11 个 Lua 模块 / 1848 行 + `wcc-skill` + `lua_check`；`npm run check` 13 文件 / 0 errors / 3 warnings（撰写当时 @wcc/sidecar 25 + @wcc/lua-check 2；现行基线见 `docs/NEXT-DEVELOPMENT-PLAN.md` 第一部分现状） |
 | forge 客户端 | `forge-mcp.js` 双 transport（stdio `<exe> --mcp` + TCP lockfile NDJSON JSON-RPC） |
 | 依赖 | `npm install` 完成，61 顶层包；Electron 45.2.3 包与二进制均就位 |
 

@@ -26,10 +26,10 @@
 
 | 命令 / 检查 | 实测结果 |
 |---|---|
-| `npm test` | 60 pass / 0 fail（sidecar 37 + lua-check 2 + shared 1 + harness 20） |
+| `npm test` | 67 pass / 0 fail（sidecar 37 + lua-check 2 + shared 1 + harness 27） |
 | `npm run check` | 13 files / 0 errors / 3 warnings / ok=true（warning 为复核提示，不阻断） |
 | `node harness/bin/wcc-harness.mjs demo` | EXIT=0，离线全链路 |
-| `node harness/bin/wcc-harness.mjs selftest` | 20/20 |
+| `node harness/bin/wcc-harness.mjs selftest` | 27/27 |
 | `node scripts/optional-electron.js` | `electron NOT usable: dist folder missing`，`dev:desktop` 起不来 |
 | `npm run build:desktop` | EXIT=1 + `electron-builder packaging is P3 and is NOT implemented`（不再假成功） |
 | 全仓 `.w3x` / `.w3m` | 零个 |
@@ -77,11 +77,10 @@ P0 / P1 / P1.5 的任务表与实测记录见附录 A。
 
 **证据等级**：`w2l` 命令 / `grill` / MCP Server 打包 / `mutateWtg()` byte-for-byte 闸门 / durable 双写为 ✅ 上游源码级；`jasshelper` / YDWE 兼容性为 🟠 二手；本机实跑 `w2l`、clone MCP Server、装 `grill`、`mdx-m3-viewer` 逐字节验证、1.26 classic `wtg` 序列化器、`wpm`/`shd` 规则、1.31+ 环境、`WC3FORGE_EXE` 均为 🔴 未做未验。所有 🔴 一律写「没有」。
 
+G0 地基与 G1 文本 IR 的任务表与实测记录见附录 A.5；下表只剩**条件触发**的阶段 A / B 与示例资产。
+
 | 组 | 任务 | 文件 | 验收 | 外部依赖 | 未就绪时降级 |
 |---|---|---|---|---|---|
-| **G0** | P2-1 物编 ID 字典 | 新建 `wcc-skill/knowledge/wc3-object-ids.md`（`mode: conditional`）；数据取本机 `Units\UnitData.slk` 等或 `w2l mpq` 或 Hive 公开列表；注明 `wcc-objects.lua` 的 `RegisterUnit` 不校验 rawcode | `steering list` 命中；含 `'hfoo'` / `'n001'` 反例 | 本机 SLK 🟠 | 只写已核实的少量四字码 + 来源与覆盖率，标 🔴 不完整，**绝不编造 ID** |
-| **G1** | P2-2 `wcc.map.snapshot` / `diff` / `verify` | `harness/src/scripts.js` 注册并实现（纯 node + `spawnSync`，零 npm 依赖）；`verify` 范本为「不能无损重建就拒绝写」；`wcc.map.build` 的 declared-only 占位可保留 | snapshot 原图 sha256 不变；diff 可读可 `apply -R`；verify 不一致**必须拒写**；含负例测试；**禁止 echo / `cmd:null` 冒充完成** | snapshot/diff 本机可闭环；verify 需 `mdx-m3-viewer` / `w2l lni` 🔴 | 工具缺失返回 `{ok:false, reason:'external-tool-missing'}` 并阻断写图，标 🔴 未实测 |
-| | P2-3 三条硬约定 | `docs/MAP-COMPILE-PIPELINE.md` §6.1 + 附录 C | AI 产物只含 `*.json` / `*.ini` / `script/*`；`manifest` 含 `targetPatch`+`language`；`build/` 在 `.gitignore` 且可从 IR 全量重建 | — | — |
 | **G2 阶段 A**（刻意不写任何脚本） | P2-4 A1–A4：选 1 张官方 Scenario 小图 → 读 `war3mapUnits.doo` 且 round-trip 逐字节一致 → 只平移 1 个单位 128，写 `xxx.edited.w3x` → WE 打开 + Save + Test Map | 依据 `MAP-COMPILE-PIPELINE.md` 阶段 A；产物不入库 | A2 sha256 前后一致；A3 原图 hash 不变；A4 截图与日志回流 | 真实 `.w3x` + `mdx-m3-viewer` / `w2l lni` 🔴 + WE 可用 | 标 🔴 未闭环，只交付 round-trip 设计 + **合成字节块单测**；不得据合成夹具写「WE 能打开」 |
 | **G3 阶段 B**（E3 Lua 主线） | P2-5 B1：`manifest.json` 填 `targetPatch="1.31+"`、`language="lua"`；`war3map.j` 仅保留可选支线目录、不施工 | `.wcc/ir/<map-id>/manifest.json` 模板入 docs，实例不入库 | JSON 两字段有值 | — | — |
 | | P2-6 B2：最小脚本经 **MCP `wc3_set_durable_script` 双写 / `w2l obj`** 注入；`wcc.map.set_script` 必须带 `targetPatch`+`strategy`（`script-only\|durable\|gui`），`script-only` 明确警告「WE 重存会丢失」，绝不静默成功 | `harness/src/scripts.js` 新增 `wcc.map.set_script`；外部仅 `spawnSync` | 产物内脚本可核对；`script-only` 返回警告**且不写图**；`harness/` 内无 JASS 主线痕迹 | 用户自备 1.31+ + MCP Server 或 `w2l obj` 🔴 | 标 🔴 未验证，只交付**参数契约 + 假 adapter 单测**（缺 targetPatch 拒绝、script-only 带警告） |
@@ -101,10 +100,10 @@ P0 / P1 / P1.5 的任务表与实测记录见附录 A。
 ### 7.1 每阶段必跑
 
 ```bash
-npm test                                   # 基线 60/60；代码改动须追加测试并说明新增数
+npm test                                   # 基线 67/67；代码改动须追加测试并说明新增数
 npm run check                              # 13 files / 0 errors / 3 warnings / ok=true
 node harness/bin/wcc-harness.mjs demo       # EXIT=0
-node harness/bin/wcc-harness.mjs selftest   # 20/20
+node harness/bin/wcc-harness.mjs selftest   # 27/27
 node scripts/optional-electron.js           # 必须报 NOT usable，不得谎报 present
 npm run sync:check                         # 推前校验三处一致
 ```
@@ -207,6 +206,20 @@ P2 追加：三脚本负例单测、sha256 比对输出、WE / Test Map 截图�
 **如实标注**：7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧仍为 0 调用，本阶段不强行接线（P3 纲要）；`dev:desktop` 与 Electron 二进制仍不可用；真实模型 key 未配置；全仓零 `.w3x`。这些都不写成已闭环。
 
 **排查记录**：WP7 的 `/check` 回归最初写成在同一测试文件内并发启动两个 sidecar 子进程，Windows / Node 22 下触发 `0xC0000409` 使测试进程整体崩溃。手工起服务确认端点本身正常（HTTP 200 / 500 均正确），改为复用同一个子进程后 2/2 通过；不是端点缺陷，也不是掩盖失败。
+
+## A.5 P2 地基与文本 IR（M2 · G0/G1）
+
+**阶段状态**：P2 整体仍为「进行中（条件触发）」；本附录只记录已闭环的 G0 / G1，阶段 A / B 未解封。
+
+| 任务 | 落地 | 验证 |
+|---|---|---|
+| P2-1 物编 ID 字典 | 新建 `wcc-skill/knowledge/wc3-object-ids.md`（`mode: conditional`）：区分官方 / 自定义 rawcode，列出仓库内 4 个未核实四字码及出处，点破 `vendor/` 里 857 个 `Convert*Field('xxxx')` 是 JASS 字段常量**不是**物编 ID；已核实条目表为空、覆盖率 0 标 🔴；写明 SLK 提取与逐条登记流程 | `steering list` 命中 `knowledge-wc3-object-ids`；用库直接验证「空闲不选 / intent 含物编单位且 files 含 `*.lua` 时选中」；`npm run docs:check` 7 PASS |
+| P2-2 三脚本 | `harness/src/scripts.js` 注册并实现 `wcc.map.snapshot` / `diff` / `verify`（`handler` 机制，纯 `node:fs` + `node:crypto`，零 npm 依赖；`wcc.map.build` 仍是 declared-only）。snapshot 只读备份 + sha256 + IR manifest；diff 输出标准 unified diff 到 `patches/`；verify 是写图闸门 | 新增 7 条测试，`npm test` **67/67**；`git -c core.autocrlf=false apply -R` 实跑逐字节回滚成功；负例 `map-not-found` / `to-not-found` / `source-required` / `round-trip-mismatch` / `external-tool-missing` 全部阻断 |
+| P2-3 三条硬约定 | `.gitignore` 显式 `**/.wcc/ir/*/build/`；`mapSnapshot` 产出的 `manifest.json` 带 `targetPatch: "1.31+"`、`language: "lua"`、每个 IR 文件的 `producer` + `sha256`、`serializersVerified: false`；`docs/MAP-COMPILE-PIPELINE.md` 三条硬约定后补「落地状态」与边界 | 单测断言 manifest 全部字段；`npm run docs:check` 7 PASS；`npm run check` 0 errors |
+
+**🔴 如实标注**：本机 MPQ / SLK 未取到（旧机器游戏目录实测不存在），物编字典覆盖率 **0**；`mapVerify` 在无外部序列化器时返回 `external-tool-missing` 并阻断写图，**round-trip 未在真实 `.w3x` 上实测**；合成文本 / 字节块只证明 sha256、unified diff 与字节比较逻辑，不证明 WE 能打开地图。仓库仍零 `.w3x`，阶段 A / B 按环境就绪检查表条件触发，状态行不推进。
+
+**排查记录**：`git apply -R` 首次在本机把回滚结果写成 CRLF（Windows `core.autocrlf=true`），字节断言失败；显式 `-c core.autocrlf=false` 后通过。这是环境差异，不是 diff 生成逻辑缺陷。
 
 ---
 

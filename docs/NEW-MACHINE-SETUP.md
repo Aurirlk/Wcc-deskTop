@@ -71,9 +71,9 @@ set ELECTRON_MIRROR=https://registry.npmmirror.com/-/binary/electron/
 
 ```bash
 npm install
-npm test                 # 基线：60 tests pass
+npm test                 # 基线：67 tests pass
 npm run check            # 基线：13 files / 0 errors / 3 warnings
-node --test harness/test/harness.test.js     # 基线：20/20
+node --test harness/test/harness.test.js     # 基线：27/27
 node harness/bin/wcc-harness.mjs demo       # 离线全链路，不需要 API key
 ```
 
@@ -177,7 +177,7 @@ PowerShell 实测 `war3.exe` / `game.dll` = **1.26.0.6401 经典版**，而 `REA
 在新机器执行下面四条，全部符合才算恢复到位：
 
 - [ ] `git remote -v` 含 `origin`（GitHub）与 `gitee` 两个远端；`npm run sync:check` 报三处一致；带凭据的 `git ls-remote gitee main` 的 HEAD 与本地一致
-- [ ] `npm test` 60 pass、`npm run check` 13 files / 0 errors / 3 warnings
-- [ ] harness 自测 20/20、`demo` 全链路跑通（离线，无需 key）
+- [ ] `npm test` 67 pass、`npm run check` 13 files / 0 errors / 3 warnings
+- [ ] harness 自测 27/27、`demo` 全链路跑通（离线，无需 key）
 - [ ] 确认新机器 1.31+ 验证环境已就绪（本机 1.26 只读保留、不升级不替换）；P2 阶段 A/B 按环境就绪条件触发
 - [ ] 桌面入口已用 `scripts/create-shortcuts.py` 重建，且 `--list` 读回的目标全部指向本机真实路径

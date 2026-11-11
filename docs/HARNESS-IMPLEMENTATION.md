@@ -286,7 +286,7 @@ node --test harness/test/harness.test.js
 :: 15 tests / 15 pass / 0 fail
 
 npm test
-:: 撰写当时 @wcc/sidecar 25 + @wcc/lua-check 2 = 27；现行基线见 docs/NEXT-DEVELOPMENT-PLAN.md 第一部分现状（60 pass）
+:: 撰写当时 @wcc/sidecar 25 + @wcc/lua-check 2 = 27；现行基线见 docs/NEXT-DEVELOPMENT-PLAN.md 第一部分现状
 
 npm run check
 :: wcc-lua-check: 13 files, 0 issues, ok=true

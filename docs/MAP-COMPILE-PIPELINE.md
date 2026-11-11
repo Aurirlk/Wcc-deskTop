@@ -357,6 +357,13 @@ testMap(mapPath, exePath?)      → spawn(exe, ['-launch','-window','-loadfile',
 2. **`manifest.json` 必须记录 `targetPatch` 与 `language`**——§5 的教训，版本错配比代码 bug 更致命。
 3. **`build/` 全量可重建**：任何一步失败都从 IR 重来，不手工修二进制。
 
+> **落地状态（2026-11-11，P2 / G1）**：三条约定已有可执行的文本层实现，位于 `harness/src/scripts.js`，注册在 `SCRIPT_MANIFEST`（`wcc.map.snapshot` / `diff` / `verify`，纯 `node:fs` + `node:crypto`，零 npm 依赖）：
+> - `wcc.map.snapshot` 改图前只读备份，写 `.wcc/ir/<map-id>/manifest.json`（`schema: wcc-ir/1`、`targetPatch: "1.31+"`、`language: "lua"`、每个 IR 文件的 `producer` + `sha256`、`serializersVerified: false`），并断言原图 sha256 前后一致；
+> - `wcc.map.diff` 输出标准 unified diff 到 `patches/`，单测用 `git -c core.autocrlf=false apply -R` 证明可逐字节回滚；
+> - `wcc.map.verify` 是**写 `.edited.w3x` 之前的闸门**：无外部序列化器时返回 `{ok:false, reason:'external-tool-missing', blocking:true}`，不一致返回 `round-trip-mismatch` 并阻断；`build/` 已显式加入 `.gitignore`。
+>
+> **🔴 边界**：以上只证明 sha256 / unified diff / 字节比较逻辑正确，用的是合成文本与字节块；**没有**跑过真实 `.w3x` 的 parse→serialize，**没有**证明 WE 能打开地图，也**不等于已打通编译链**。阶段 A / B 仍按主计划「条件触发」处理，环境就绪检查表全过之前不得写成已完成。
+
 ### 6.2 三条可切换的编译出口
 
 | 出口 | 输入 | 编译器 / 打包器 | 产物 | 适用 |
