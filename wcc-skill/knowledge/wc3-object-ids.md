@@ -8,6 +8,8 @@ priority: 70
 # WC3 物编 ID（rawcode）字典 · 骨架与未核实清单
 
 > **状态：2026-11-11 · 覆盖率 0 · 🔴 字典不完整，不可用于生成代码。**
+> **资源约束（同日用户确认）**：本机魔兽资产至少 3 天后才可能具备，当前网络/资源不支持下载；
+> 期间保持覆盖率 0，禁止联网取数、禁止凭记忆或示例填 ID。以用户确认资源就绪为准。
 > 本文刻意**不提供任何"可直接抄用的官方 ID 表"**：本机 MPQ / SLK 未提取成功，仓库内也没有可核实的来源。宁可留空表，绝不编造 ID 凑数。
 
 ## 1. 为什么必须先有这份文档
@@ -34,7 +36,8 @@ priority: 70
 | `'hfoo'` | `wcc-lib/wcc-core.lua:66`（参数注释示例）、`wcc-lib/wcc-spawner.lua` 的产物、`docs/ASSETS-GUIDE.md:52` 的引用 | 只作"参数形如四字码"的示意，**未核实** |
 | `'ugho'` | `wcc-lib/wcc-spawner.lua:117` | 未核实 |
 | `'h001'` | `wcc-lib/wcc-objects.lua:20`（注释示例） | 自定义 ID 写法示例，未核实 |
-| `'n001'` | `examples/demo-campaign/tables-sample.json:3`、codegen / table-import 单测夹具 | 自定义 ID 示例，未核实 |
+| `'n001'` / `'n002'` | `examples/demo-campaign/tables-sample.json`（`units`）、codegen / table-import 单测夹具 | 自定义 ID 示例，未核实 |
+| `'Nbal'` | `examples/demo-campaign/README.md` 中以「绝不臆造」的否定式提及（旧版扩展建议里曾是硬编码示例） | 未核实，已改为 `bossId: null` 留空 |
 
 > **不要从这些示例里抄 ID 写进战役代码。** 测试夹具里的值只用来断言字符串透传，不代表 ID 有效。
 
@@ -54,7 +57,7 @@ ABILITY_IF_MISSILE_SPEED = ConvertAbilityIntegerField('amsp')
 |---|---|---|
 | 本机 MPQ / SLK | 🔴 未取到 | `docs/ASSETS-GUIDE.md:32` 记录的游戏目录在本机不存在（2026-11-11 实测） |
 | `w2l mpq <War3路径>` | 🔴 未运行 | `docs/MAP-COMPILE-PIPELINE.md:149` 是上游源码级证据，本机未实测 |
-| Hive 公开 ID 列表 / `Drake53/War3Net` | 🟠 二手 / 外部 | 需联网取回后逐条登记来源 |
+| Hive 公开 ID 列表 / `Drake53/War3Net` | 🔴 当前不可得 | 需联网取回后逐条登记来源；2026-11-11 用户明确本机网络/资源不支持下载，至少 3 天后才可能具备，**期间禁止尝试取数** |
 | 仓库内 `vendor/` 注解 | ❌ 不适用 | 见上节 |
 
 **覆盖率：官方单位 0 / 官方英雄 0 / 官方技能 0 / 官方物品 0。🔴 表未建成。**

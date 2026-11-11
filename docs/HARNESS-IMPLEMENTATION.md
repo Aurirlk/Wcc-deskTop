@@ -19,7 +19,7 @@
 |---|---|
 | ✅ 已落地 | `harness/` 独立零依赖层：12 个 JS 模块 + 1 个 CLI + 15 个自测用例，可离线运行 |
 | ✅ 已落地 | `wcc-skill/` 8 份文档新增 steering front matter（**只加头部元数据，正文 0 改动**，`git diff --stat` = 8 files / +50 lines / 0 deletions） |
-| ✅ 已验证（撰写当时基线） | harness 自测 15、`npm test` 27、`npm run check` 13 files / 0 issues；**现行基线 57 / 19 / 0 errors / 3 warnings，见主计划 §1** |
+| ✅ 已验证（撰写当时基线） | harness 自测 15、`npm test` 27、`npm run check` 13 files / 0 issues；**这些是当时数值，现行基线一律见主计划 §1，勿引用本节数字** |
 | ✅ 已验证 | `node harness/bin/wcc-harness.mjs demo` 全链路离线跑通（steering → spec → scratch → hook → 工具注入 → 预算 → TUI 静态渲染） |
 | 🟠 未接入 | **未改动** `packages/wcc-sidecar/src/agent.js`、`server.js`、`tools.js`；现有 Agent Loop 仍全量注入 skill、仍手动 check、仍 `guard < 8` 硬循环 |
 | 🟠 未接入 | `harness/` 故意**不进 npm workspaces**（根 `package.json` 未改、`package-lock.json` 未因本次新增而重生成），保持零依赖、零回归 |

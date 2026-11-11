@@ -385,6 +385,13 @@ testMap(mapPath, exePath?)      → spawn(exe, ['-launch','-window','-loadfile',
 
 > **给 WCC 的直接建议**：`wcc.map.set_script` 接口必须显式带 `targetPatch` 与 `strategy` 参数，`strategy = script-only | durable | gui`，并在 `script-only` 时**明确警告「WE 重存会丢失」**，绝不静默假装成功。
 
+> **落地状态（2026-11-11，见主计划附录 A.7）**：该**参数契约**已在 `harness/src/scripts.js` 实现——
+> 缺 `targetPatch` / `strategy` 直接拒绝；`targetPatch` 只接受 `1.31+`（1.26 只读保留）；
+> `script-only` 返回 `script-only-not-durable` + 上述警告且**不写图**；
+> `durable` / `gui` 必须先过 `wcc.map.verify` 逐字节闸门、再显式注入 adapter，否则 fail-closed。
+> 🔴 **只交付契约 + 假 adapter 单测**：真实 MCP / `w2l obj` adapter 未接入，本层从未写过 `.w3x`，
+> 阶段 B2/B3/B4 仍未验证。这**不等于**「已支持脚本进图」。
+
 ---
 
 ## 7. P0 最小验证（在通过前，不许写「已支持地图生成」）

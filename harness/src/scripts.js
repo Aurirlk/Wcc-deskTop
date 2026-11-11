@@ -71,6 +71,12 @@ export const SCRIPT_MANIFEST = [
     desc: "parse→serialize 逐字节 round-trip 闸门；不能无损重建就拒绝写图",
   },
   {
+    id: "wcc.map.set_script",
+    when: "P2 阶段 B（🔴 条件触发，当前未解封）：注入战役脚本前",
+    cmd: null, handler: "mapSetScript", args: [], risk: "external-write", needsApproval: true, timeoutMs: 60000,
+    desc: "参数契约 + 可注入 adapter：强制 targetPatch(\"1.31+\") 与 strategy(script-only|durable|gui)；script-only 明确警告「WE 重存会丢失」且不写图；无逐字节 round-trip 证据或无真 adapter 一律 fail-closed，绝不写 .w3x",
+  },
+  {
     id: "wcc.map.build",
     when: "spec 全任务完成（当前仅声明，走 Sidecar build_map 工具）",
     cmd: null, args: [], risk: "local-write", needsApproval: true, timeoutMs: 60000,
@@ -316,7 +322,161 @@ export function mapVerify({ root = process.cwd(), source, rebuilt = null, serial
   };
 }
 
-const SCRIPT_HANDLERS = { mapSnapshot, mapDiff, mapVerify };
+// ---------------------------------------------------------------------------
+// P2-6 — wcc.map.set_script parameter contract (the DEGRADED delivery).
+// docs/MAP-COMPILE-PIPELINE.md §5.3 / :386: the interface MUST take
+// `targetPatch` + `strategy` explicitly; `script-only` must warn that a WE
+// re-save destroys the script and must never silently report success.
+//
+// 🔴 THIS LAYER NEVER WRITES A .w3x. No real MCP `wc3_set_durable_script` /
+// `w2l obj` / `wc3_add_gui_trigger` adapter is wired on this machine. Without
+// an explicitly injected adapter (and a verified byte-for-byte round-trip) it
+// FAILS CLOSED. A fake adapter in a unit test proves only the parameter
+// contract — never that WE can open the map (stage B3/B4 is still 🔴).
+// ---------------------------------------------------------------------------
+export const SET_SCRIPT_STRATEGIES = Object.freeze(["script-only", "durable", "gui"]);
+/** B+A dual-track decision (2026-11-11): 1.31+/Lua is the only built mainline. */
+export const SUPPORTED_TARGET_PATCHES = Object.freeze(["1.31+"]);
+
+const SCRIPT_ONLY_WARNING =
+  "WE 重存会丢失脚本：script-only 只写 war3map.lua/j，World Editor 重存（Save）会覆盖它。" +
+  "此策略不写图；如需进图请用 strategy=\"durable\"，并先过 wcc.map.verify 逐字节闸门。";
+
+function readScriptArg(root, script) {
+  if (typeof script !== "string" || !script.trim()) return { error: "script-required" };
+  // A one-line string that names an existing file is a path; anything else is
+  // treated as the script text itself. Never guess a path from script content.
+  if (!script.includes("\n")) {
+    const abs = path.isAbsolute(script) ? script : path.resolve(root, script);
+    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+      return { text: fs.readFileSync(abs, "utf8"), from: abs };
+    }
+  }
+  return { text: script, from: null };
+}
+
+/**
+ * Validate + dispatch a script-injection request. Returns `written:false` in
+ * every failure path. Even on success, `written` comes from the adapter's
+ * honest report — this function itself performs no binary writes.
+ */
+export function mapSetScript({
+  root = process.cwd(),
+  map = null,
+  script = null,
+  targetPatch = null,
+  strategy = null,
+  adapter = null,
+  roundTrip = null,
+  mapId = null,
+} = {}) {
+  const base = { written: false, targetPatch, strategy };
+
+  // 1) targetPatch is mandatory and must match the approved mainline.
+  if (!targetPatch || typeof targetPatch !== "string" || !targetPatch.trim()) {
+    return {
+      ok: false, ...base, reason: "targetPatch-required", blocking: true,
+      note: "必须显式声明目标补丁，绝不猜测；本机 1.26 只读保留、不施工。",
+    };
+  }
+  if (!SUPPORTED_TARGET_PATCHES.includes(targetPatch)) {
+    return {
+      ok: false, ...base, reason: "unsupported-target-patch", blocking: true,
+      supported: [...SUPPORTED_TARGET_PATCHES],
+      note: "🔴 仅 1.31+ / Lua 主线已拍板；1.26 只支持 JASS，不进图、不改写本机游戏。",
+    };
+  }
+
+  // 2) strategy is mandatory and from a closed set.
+  if (!strategy) {
+    return {
+      ok: false, ...base, reason: "strategy-required", blocking: true,
+      supported: [...SET_SCRIPT_STRATEGIES],
+    };
+  }
+  if (!SET_SCRIPT_STRATEGIES.includes(strategy)) {
+    return {
+      ok: false, ...base, reason: "unsupported-strategy", blocking: true,
+      supported: [...SET_SCRIPT_STRATEGIES],
+    };
+  }
+
+  // 3) The map and the script must both be real.
+  const m = resolveFile(root, map, "map");
+  if (m.error) return { ok: false, ...base, reason: m.error, blocking: true, map: m.abs || null };
+  const s = readScriptArg(root, script);
+  if (s.error) return { ok: false, ...base, reason: s.error, blocking: true };
+
+  const scriptSha256 = sha256(Buffer.from(s.text, "utf8"));
+
+  // 4) script-only: EXPLICIT warning, NO write, NEVER a silent success.
+  if (strategy === "script-only") {
+    return {
+      ok: false, ...base,
+      reason: "script-only-not-durable", blocking: true,
+      warning: SCRIPT_ONLY_WARNING,
+      scriptSha256, scriptChars: s.text.length,
+      note: "未写任何 .w3x；WE 重存会丢失单独写入的脚本。见 MAP-COMPILE-PIPELINE.md §7。",
+    };
+  }
+
+  // 5) durable / gui: round-trip gate FIRST, then an explicitly injected adapter.
+  if (!roundTrip || roundTrip.ok !== true || roundTrip.verified !== true) {
+    return {
+      ok: false, ...base, reason: "round-trip-not-verified", blocking: true,
+      note: "写图前必须先由 wcc.map.verify 取得 parse→serialize 逐字节证据；合成字节块单测不算真机验收。",
+    };
+  }
+  if (typeof adapter !== "function") {
+    return {
+      ok: false, ...base, reason: "external-tool-missing", blocking: true,
+      note: "🔴 MCP wc3_set_durable_script / w2l obj / wc3_add_gui_trigger 均未在本机接入；未过闸门，禁止写 .edited.w3x。",
+    };
+  }
+
+  const id = mapId || mapIdFor(m.abs);
+  const ext = path.extname(m.abs);
+  const outFile = path.join(path.dirname(m.abs), `${path.basename(m.abs, ext)}.edited${ext || ".w3x"}`);
+  const req = {
+    map: m.abs,
+    mapId: id,
+    targetPatch,
+    strategy,
+    language: IR_LANGUAGE,
+    script: s.text,
+    scriptSha256,
+    scriptFrom: s.from,
+    outFile, // red line: always an .edited copy, never overwrite the source
+    roundTrip: {
+      verified: roundTrip.verified,
+      evidence: roundTrip.evidence || null,
+      sha256: roundTrip.sha256 || null,
+    },
+  };
+
+  let result;
+  try {
+    result = adapter(req);
+  } catch (e) {
+    return { ok: false, ...base, reason: "adapter-error", blocking: true, error: String(e.message || e) };
+  }
+  if (!result || result.ok !== true) {
+    return {
+      ok: false, ...base, reason: "adapter-failed", blocking: true,
+      adapterResult: result || null,
+      note: "adapter 未报告成功，未写任何 .w3x；绝不静默成功。",
+    };
+  }
+  return {
+    ok: true, ...base,
+    written: Boolean(result.written),
+    outFile: result.outFile || null,
+    evidence: result.evidence || null,
+    note: "adapter 已返回结果；真机 WE Save / Test Map 验收仍属 🔴 未验证（阶段 B3/B4）。",
+  };
+}
+
+const SCRIPT_HANDLERS = { mapSnapshot, mapDiff, mapVerify, mapSetScript };
 
 export function findScript(id) {
   return SCRIPT_MANIFEST.find((s) => s.id === id) || null;

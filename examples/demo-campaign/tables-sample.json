@@ -1,24 +1,64 @@
 {
+  "meta": {
+    "schema": "wcc-tables-sample/1",
+    "targetPatch": "1.31+",
+    "language": "lua",
+    "chapters": 3,
+    "status": "示例数据，🔴 未进图；所有 rawcode 均为未核实示例值",
+    "note": "保留 units / waves / dialogue / quests 顶层结构以兼容 packages/wcc-sidecar/src/table-import.js；chapters / boss 仅作示例索引，codegen 不消费。",
+    "rawcodeWarning": "见 wcc-skill/knowledge/wc3-object-ids.md：字典覆盖率 0，🔴 本表中的 ID 不可直接用于生成代码。"
+  },
+  "chapters": [
+    {
+      "id": "ch1",
+      "title": "第一章 · 斯坦恩布莱德",
+      "entry": "src.chapter_01",
+      "source": "src/chapter_01.lua",
+      "summary": "开场对话 → 主线任务「拯救村民」→ 第一波亡灵"
+    },
+    {
+      "id": "ch2",
+      "title": "第二章 · 村庄外围",
+      "entry": "src.chapter_02",
+      "source": "src/chapter_02.lua",
+      "summary": "支线任务「守住路口」+ 两波刷怪，演示刷怪池与计时器"
+    },
+    {
+      "id": "ch3",
+      "title": "第三章 · 恐惧魔王的城堡",
+      "entry": "src.chapter_03",
+      "source": "src/chapter_03.lua",
+      "summary": "Boss 阶段机 + 结局对话（示例骨架，🔴 未进图）"
+    }
+  ],
   "units": [
-    { "rawcode": "n001", "name": "腐化卫士", "hp": 1200, "mana": 300 },
-    { "rawcode": "n002", "name": "食尸鬼精锐", "hp": 800 }
+    { "rawcode": "n001", "name": "腐化卫士", "hp": 1200, "mana": 300, "chapter": "ch1", "note": "自定义 ID 示例，未核实" },
+    { "rawcode": "n002", "name": "食尸鬼精锐", "hp": 800, "chapter": "ch2", "note": "自定义 ID 示例，未核实" }
   ],
   "waves": [
     {
-      "id": "ch1_wave_a",
-      "unitId": "ugho",
-      "count": 5,
-      "interval": 30,
-      "waves": 3,
-      "x": 1000,
-      "y": 2000,
-      "targetX": 0,
-      "targetY": 0
+      "id": "ch1_wave_a", "unitId": "ugho", "count": 5, "interval": 30, "waves": 3,
+      "x": 1000, "y": 2000, "targetX": 0, "targetY": 0,
+      "chapter": "ch1", "note": "示例 unitId，未核实"
+    },
+    {
+      "id": "ch2_wave_a", "unitId": "ugho", "count": 6, "interval": 25, "waves": 2,
+      "x": 1600, "y": 2400, "targetX": 1000, "targetY": 2000,
+      "chapter": "ch2", "note": "示例 unitId，未核实"
+    },
+    {
+      "id": "ch2_wave_b", "unitId": "ugho", "count": 8, "interval": 20, "waves": 3,
+      "x": 2000, "y": 2800, "targetX": 1000, "targetY": 2000,
+      "chapter": "ch2", "note": "示例 unitId，未核实"
     }
   ],
   "dialogue": [
-    { "speaker": "阿尔萨斯", "text": "我们到了，斯坦恩布莱德。", "x": 1000, "y": 2000 },
-    { "speaker": "乌瑟尔", "text": "保持警惕，王子殿下。" }
+    { "speaker": "阿尔萨斯", "text": "我们到了，斯坦恩布莱德。", "x": 1000, "y": 2000, "chapter": "ch1" },
+    { "speaker": "乌瑟尔", "text": "保持警惕，王子殿下。", "chapter": "ch1" },
+    { "speaker": "村民", "text": "北面的小路又出现了亡灵！", "chapter": "ch2" },
+    { "speaker": "阿尔萨斯", "text": "分头守住两个路口，别让他们靠近村子。", "chapter": "ch2" },
+    { "speaker": "乌瑟尔", "text": "城堡的门开了，那股气息……是恐惧魔王。", "chapter": "ch3" },
+    { "speaker": "阿尔萨斯", "text": "那就在此做个了结。", "chapter": "ch3" }
   ],
   "quests": [
     {
@@ -27,7 +67,38 @@
       "description": "消灭亡灵，拯救村民",
       "type": "main",
       "objectives": ["消灭亡灵入侵者", "拯救被困村民 (0/5)"],
-      "rewards": ["经验值: 500", "金币: 100"]
+      "rewards": ["经验值: 500", "金币: 100"],
+      "chapter": "ch1"
+    },
+    {
+      "id": "hold_the_roads",
+      "title": "守住路口",
+      "description": "挡住村庄外围的两波亡灵",
+      "type": "side",
+      "objectives": ["守住东侧路口", "守住北侧路口"],
+      "rewards": ["经验值: 300"],
+      "chapter": "ch2"
+    },
+    {
+      "id": "defeat_dreadlord",
+      "title": "讨伐恐惧魔王",
+      "description": "击败城堡里的首领",
+      "type": "main",
+      "objectives": ["击败首领"],
+      "rewards": ["经验值: 1000"],
+      "chapter": "ch3",
+      "note": "示例骨架：Boss 的 rawcode 未核实，chapter_03.lua 刻意不创建单位"
     }
-  ]
+  ],
+  "boss": {
+    "chapter": "ch3",
+    "bossId": null,
+    "spawnX": 2000,
+    "spawnY": 3000,
+    "phases": [
+      { "healthPercent": 100, "onEnter": "战斗开始" },
+      { "healthPercent": 50, "onEnter": "首领进入狂暴" }
+    ],
+    "note": "🔴 bossId 刻意留空：物编 ID 字典覆盖率 0，绝不臆造四字码。真实进图前须由已核实来源填入。"
+  }
 }

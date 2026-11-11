@@ -20,7 +20,8 @@ import {
   createToolInjector, mergeCatalog, TOOL_CATALOG,
   createPipeline, withBudget,
   SCRIPT_MANIFEST, findScript, runScript, describeScripts, probeForge,
-  unifiedDiff, mapSnapshot, mapDiff, mapVerify,
+  unifiedDiff, mapSnapshot, mapDiff, mapVerify, mapSetScript,
+  SET_SCRIPT_STRATEGIES, SUPPORTED_TARGET_PATCHES,
   renderStatic, diffPreview, clip, displayWidth, createTui,
   createHarness,
   defaultGateRunner,
@@ -473,3 +474,132 @@ test("P2 scripts: map handlers are executable, wcc.map.build stays declared-only
 function cryptoHash(buf) {
   return crypto.createHash("sha256").update(buf).digest("hex");
 }
+
+// ---------------------------------------------------------------------------
+// P2-6 — wcc.map.set_script parameter contract. These tests prove ONLY the
+// contract (missing params refused, script-only warns, fail-closed without a
+// real adapter). They do NOT prove that WE can open a generated .w3x.
+// ---------------------------------------------------------------------------
+function setScriptFixture(t) {
+  const d = tmp(t);
+  const map = path.join(d, "demo.w3x");
+  fs.writeFileSync(map, Buffer.from("synthetic-map-bytes-not-a-real-w3x"));
+  const script = 'print("hello from WCC")\n';
+  const base = { root: d, map, script, targetPatch: "1.31+", strategy: "durable" };
+  return { d, map, script, base };
+}
+
+test("P2-6 set_script: targetPatch / strategy / map / script are all mandatory", (t) => {
+  const { base, map, script } = setScriptFixture(t);
+  assert.deepEqual([...SET_SCRIPT_STRATEGIES], ["script-only", "durable", "gui"]);
+  assert.deepEqual([...SUPPORTED_TARGET_PATCHES], ["1.31+"]);
+
+  const noPatch = mapSetScript({ ...base, targetPatch: null });
+  assert.equal(noPatch.reason, "targetPatch-required");
+  assert.equal(noPatch.blocking, true);
+  assert.equal(noPatch.written, false);
+
+  // Local 1.26 is read-only by decision; never silently retarget to JASS.
+  const legacy = mapSetScript({ ...base, targetPatch: "1.26" });
+  assert.equal(legacy.reason, "unsupported-target-patch");
+  assert.deepEqual(legacy.supported, ["1.31+"]);
+
+  assert.equal(mapSetScript({ ...base, strategy: null }).reason, "strategy-required");
+  const bad = mapSetScript({ ...base, strategy: "magic" });
+  assert.equal(bad.reason, "unsupported-strategy");
+  assert.deepEqual(bad.supported, ["script-only", "durable", "gui"]);
+
+  assert.equal(mapSetScript({ ...base, script: "  " }).reason, "script-required");
+  assert.equal(mapSetScript({ ...base, map: "missing.w3x" }).reason, "map-not-found");
+  assert.equal(fs.existsSync(map), true, "no input file was touched");
+});
+
+test("P2-6 set_script: script-only warns about WE re-save and NEVER writes", (t) => {
+  const { d, base, script } = setScriptFixture(t);
+  const r = mapSetScript({ ...base, strategy: "script-only" });
+  assert.equal(r.ok, false, "script-only must not report success silently");
+  assert.equal(r.reason, "script-only-not-durable");
+  assert.equal(r.blocking, true);
+  assert.equal(r.written, false);
+  assert.match(r.warning, /WE 重存会丢失/);
+  assert.match(r.warning, /World Editor/);
+  assert.equal(r.scriptSha256, cryptoHash(Buffer.from(script, "utf8")));
+  assert.equal(fs.readdirSync(d).filter((f) => f.includes(".edited")).length, 0);
+});
+
+test("P2-6 set_script: durable/gui fail closed without round-trip evidence or a real adapter", (t) => {
+  const { d, map, base } = setScriptFixture(t);
+  assert.equal(mapSetScript(base).reason, "round-trip-not-verified");
+
+  // A forged "verified" flag is not enough in itself...
+  const forged = { ok: true, verified: true };
+  assert.equal(mapSetScript({ ...base, roundTrip: forged }).reason, "external-tool-missing");
+
+  // ...and even a REAL mapVerify() byte-for-byte result on a synthetic buffer
+  // still has no external adapter wired -> still fail closed.
+  const rebuilt = path.join(d, "rebuilt.w3x");
+  fs.writeFileSync(rebuilt, fs.readFileSync(map));
+  const verified = mapVerify({ root: d, source: map, rebuilt });
+  assert.equal(verified.verified, true);
+  const gated = mapSetScript({ ...base, roundTrip: verified });
+  assert.equal(gated.reason, "external-tool-missing");
+  assert.equal(gated.blocking, true);
+  assert.equal(gated.written, false);
+  assert.match(gated.note, /🔴/);
+  assert.equal(fs.readdirSync(d).filter((f) => f.includes(".edited")).length, 0);
+});
+
+test("P2-6 set_script: fake adapter proves the parameter contract, not map generation", (t) => {
+  const { d, map, script, base } = setScriptFixture(t);
+  const rebuilt = path.join(d, "rebuilt.w3x");
+  fs.writeFileSync(rebuilt, fs.readFileSync(map));
+  const verified = mapVerify({ root: d, source: map, rebuilt });
+
+  const seen = [];
+  const adapter = (req) => {
+    seen.push(req);
+    return { ok: true, written: false, evidence: "fake-adapter-no-io" };
+  };
+  const r = mapSetScript({ ...base, roundTrip: verified, adapter });
+  assert.equal(r.ok, true);
+  assert.equal(r.written, false, "the fake adapter performs no binary write");
+  assert.equal(seen.length, 1);
+
+  const req = seen[0];
+  assert.equal(req.targetPatch, "1.31+");
+  assert.equal(req.strategy, "durable");
+  assert.equal(req.language, "lua");
+  assert.equal(req.mapId, "demo");
+  assert.equal(req.script, script);
+  assert.equal(req.scriptSha256, cryptoHash(Buffer.from(script, "utf8")));
+  assert.equal(req.roundTrip.verified, true);
+  assert.match(req.outFile, /demo\.edited\.w3x$/);
+  assert.notEqual(req.outFile, map, "red line: never overwrite the source map");
+  assert.equal(fs.existsSync(path.join(d, "demo.edited.w3x")), false);
+  assert.match(r.note, /🔴/);
+
+  // An adapter that fails or throws must never be turned into a success.
+  const failed = mapSetScript({ ...base, roundTrip: verified, adapter: () => ({ ok: false }) });
+  assert.equal(failed.reason, "adapter-failed");
+  assert.equal(failed.written, false);
+  const threw = mapSetScript({ ...base, roundTrip: verified, adapter: () => { throw new Error("boom"); } });
+  assert.equal(threw.reason, "adapter-error");
+  assert.equal(threw.written, false);
+});
+
+test("P2-6 set_script: runScript routes to the handler and enforces approval", (t) => {
+  const { d, map, script } = setScriptFixture(t);
+  const list = describeScripts();
+  assert.equal(list.find((s) => s.id === "wcc.map.set_script")?.executable, true);
+  assert.equal(list.find((s) => s.id === "wcc.map.build")?.executable, false);
+
+  const args = { map, script, targetPatch: "1.31+", strategy: "script-only" };
+  const gated = runScript("wcc.map.set_script", { root: d, args });
+  assert.equal(gated.reason, "approval-required");
+
+  const r = runScript("wcc.map.set_script", { root: d, approved: true, args });
+  assert.equal(r.runBy, "handler");
+  assert.equal(r.reason, "script-only-not-durable");
+  assert.equal(r.written, false);
+  assert.equal(r.id, "wcc.map.set_script");
+});

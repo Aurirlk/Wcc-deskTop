@@ -57,11 +57,16 @@ maxChars: 3600
 - ✅ **P2 地基已落地**：`wcc.map.snapshot` / `diff` / `verify` 三个文本 IR 闸门（纯 node、
   零依赖）；`verify` 缺外部序列化器时 fail-closed。`wcc-skill/knowledge/wc3-object-ids.md`
   是**覆盖率 0 的骨架**，绝不编造四字码。
+- ✅ **P2-6 / G4 已交付**：`wcc.map.set_script` 参数契约（强制 `targetPatch` / `strategy`，
+  `script-only` 拒绝并警告「WE 重存会丢失」，无逐字节证据或真 adapter 一律 fail-closed、永不写图）；
+  示例战役 3 章 + `manifest.json` 双轨字段（`mapGenerated: false`）。真机进图仍 🔴。
 - 🔴 **P2 阶段 A/B 未闭环**：仓库零 `.w3x`，真实 round-trip / WE 打开均未验证，按用户自备
   1.31+ 环境**条件触发**，状态行不推进。`build_map` 只产 `dist/build/war3map.lua`。
+  2026-11-11 用户确认：本机魔兽资产**至少 3 天后**才有、当前网络/资源不支持下载；
+  期间禁止联网取数与编造 rawcode，**以用户确认就绪为准，不按日期自动解封**。
 - 本机 Electron 二进制缺失（`npm run build:desktop` 如实 EXIT=1，打包属 P3）；真实模型 key 未配置。
 - 本机 War3 1.26 只支持 JASS。**B+A 双轨已拍板**：1.31+ / Lua 主线，本机 1.26 只读保留、
   不升级不替换；`manifest.json` 记 `targetPatch` 与 `language`；1.31+ 环境由用户自备。
-- 现行基线：`npm test` 67/67、`npm run check` 0 errors / 3 warnings、
-  CLI selftest 27/27、`npm run docs:check` 7 PASS。
+- 现行基线：`npm test` 72/72、`npm run check` 15 files / 0 errors / 3 warnings、
+  CLI selftest 32/32、`npm run docs:check` 7 PASS。
   排期与执行记录见 `docs/NEXT-DEVELOPMENT-PLAN.md`（正文 + 附录 A）。

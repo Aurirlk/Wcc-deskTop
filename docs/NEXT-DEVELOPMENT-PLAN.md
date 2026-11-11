@@ -26,10 +26,10 @@
 
 | 命令 / 检查 | 实测结果 |
 |---|---|
-| `npm test` | 67 pass / 0 fail（sidecar 37 + lua-check 2 + shared 1 + harness 27） |
-| `npm run check` | 13 files / 0 errors / 3 warnings / ok=true（warning 为复核提示，不阻断） |
+| `npm test` | 72 pass / 0 fail（sidecar 37 + lua-check 2 + shared 1 + harness 32） |
+| `npm run check` | 15 files / 0 errors / 3 warnings / ok=true（warning 为复核提示，不阻断） |
 | `node harness/bin/wcc-harness.mjs demo` | EXIT=0，离线全链路 |
-| `node harness/bin/wcc-harness.mjs selftest` | 27/27 |
+| `node harness/bin/wcc-harness.mjs selftest` | 32/32 |
 | `node scripts/optional-electron.js` | `electron NOT usable: dist folder missing`，`dev:desktop` 起不来 |
 | `npm run build:desktop` | EXIT=1 + `electron-builder packaging is P3 and is NOT implemented`（不再假成功） |
 | 全仓 `.w3x` / `.w3m` | 零个 |
@@ -83,11 +83,15 @@ G0 地基与 G1 文本 IR 的任务表与实测记录见附录 A.5；下表只�
 |---|---|---|---|---|---|
 | **G2 阶段 A**（刻意不写任何脚本） | P2-4 A1–A4：选 1 张官方 Scenario 小图 → 读 `war3mapUnits.doo` 且 round-trip 逐字节一致 → 只平移 1 个单位 128，写 `xxx.edited.w3x` → WE 打开 + Save + Test Map | 依据 `MAP-COMPILE-PIPELINE.md` 阶段 A；产物不入库 | A2 sha256 前后一致；A3 原图 hash 不变；A4 截图与日志回流 | 真实 `.w3x` + `mdx-m3-viewer` / `w2l lni` 🔴 + WE 可用 | 标 🔴 未闭环，只交付 round-trip 设计 + **合成字节块单测**；不得据合成夹具写「WE 能打开」 |
 | **G3 阶段 B**（E3 Lua 主线） | P2-5 B1：`manifest.json` 填 `targetPatch="1.31+"`、`language="lua"`；`war3map.j` 仅保留可选支线目录、不施工 | `.wcc/ir/<map-id>/manifest.json` 模板入 docs，实例不入库 | JSON 两字段有值 | — | — |
-| | P2-6 B2：最小脚本经 **MCP `wc3_set_durable_script` 双写 / `w2l obj`** 注入；`wcc.map.set_script` 必须带 `targetPatch`+`strategy`（`script-only\|durable\|gui`），`script-only` 明确警告「WE 重存会丢失」，绝不静默成功 | `harness/src/scripts.js` 新增 `wcc.map.set_script`；外部仅 `spawnSync` | 产物内脚本可核对；`script-only` 返回警告**且不写图**；`harness/` 内无 JASS 主线痕迹 | 用户自备 1.31+ + MCP Server 或 `w2l obj` 🔴 | 标 🔴 未验证，只交付**参数契约 + 假 adapter 单测**（缺 targetPatch 拒绝、script-only 带警告） |
+| | P2-6 B2：最小脚本经 **MCP `wc3_set_durable_script` 双写 / `w2l obj`** 注入；`wcc.map.set_script` 必须带 `targetPatch`+`strategy`（`script-only\|durable\|gui`），`script-only` 明确警告「WE 重存会丢失」，绝不静默成功 | `harness/src/scripts.js` 新增 `wcc.map.set_script`；外部仅 `spawnSync` | 产物内脚本可核对；`script-only` 返回警告**且不写图**；`harness/` 内无 JASS 主线痕迹 | 用户自备 1.31+ + MCP Server 或 `w2l obj` 🔴 | ✅ **降级交付已完成**（参数契约 + 假 adapter 单测，见 A.7）；真机 B2 仍 🔴 未验证 |
 | | P2-7 B3/B4：WE Save 后重读确认脚本未被覆盖（**durable 分水岭**）→ Test Map 看到输出 + 日志回流 + `lua_check` | 依据 `MAP-COMPILE-PIPELINE.md` 阶段 B | B3 重读哈希比对；B4 截图/日志 + `npm run check` 0 errors | 同 P2-6 + 真实 WE | 同上，标 🔴 不虚报 |
-| **G4** | P2-8 补示例资产：`tables-sample.json` 扩到 3 章、manifest 双轨字段、demo README 不再虚标 `.w3x` | `examples/demo-campaign/README.md`、`tables-sample.json`、必要时 `src/chapter_02.lua` / `chapter_03.lua` | 3 章样本齐；`npm test` 不回退；README 无「已有 `.w3x`」 | 无（纯文本可闭环） | 先补数据 + 否定注记，章节脚本标「示例，未进图」 |
+| **G4** | P2-8 补示例资产：`tables-sample.json` 扩到 3 章、manifest 双轨字段、demo README 不再虚标 `.w3x` | `examples/demo-campaign/README.md`、`tables-sample.json`、必要时 `src/chapter_02.lua` / `chapter_03.lua` | 3 章样本齐；`npm test` 不回退；README 无「已有 `.w3x`」 | 无（纯文本可闭环） | ✅ **已交付**（3 章数据 + 2 个章节脚本骨架 + manifest 双轨字段，见 A.7） |
 
 **环境就绪检查表**（每次开工前逐条确认，全过才允许把阶段 A/B 从「条件触发」改为「可执行」）：① 1.31+ 客户端可用；② 一张非加密真实 `.w3x` 已选定并备份；③ WE 可打开 + Save + Test Map；④ `w2l` / `mdx-m3-viewer` / MCP Server 至少一条注入路径可用且已实测 round-trip。
+
+> **资源到位约束（用户 2026-11-11 明确）**：本机魔兽争霸相关资产**至少 3 天后**才可能具备，且当前网络与资源**不支持下载**。
+> 因此阶段 A / B、物编 ID 数据核实、外部工具取回与实跑全部保持 🔴 封锁；**不按日期自动解封，以用户确认就绪为准**。
+> 期间禁止联网取数、禁止编造 rawcode；只做纯文本可闭环的交付（见附录 A.7）。
 
 ## 6. P3 / P4 纲要
 
@@ -100,10 +104,10 @@ G0 地基与 G1 文本 IR 的任务表与实测记录见附录 A.5；下表只�
 ### 7.1 每阶段必跑
 
 ```bash
-npm test                                   # 基线 67/67；代码改动须追加测试并说明新增数
-npm run check                              # 13 files / 0 errors / 3 warnings / ok=true
+npm test                                   # 基线 72/72；代码改动须追加测试并说明新增数
+npm run check                              # 15 files / 0 errors / 3 warnings / ok=true
 node harness/bin/wcc-harness.mjs demo       # EXIT=0
-node harness/bin/wcc-harness.mjs selftest   # 27/27
+node harness/bin/wcc-harness.mjs selftest   # 32/32
 node scripts/optional-electron.js           # 必须报 NOT usable，不得谎报 present
 npm run sync:check                         # 推前校验三处一致
 ```
@@ -238,6 +242,28 @@ harness demo EXIT=0 · CLI selftest 27/27 · `npm run docs:check` 7 PASS / 0 FAI
 
 **如实标注**：本轮只做文档整理，**没有**改排期、没有解封阶段 A/B、没有补物编字典数据、
 没有接线 pipeline / `prepareTurn` / spec / TUI。状态行仍是「P2 进行中（条件触发）」。
+
+---
+
+## A.7 P2-6 参数契约与 G4 示例资产（2026-11-11 晚）
+
+**范围**：按上一轮讨论的推荐顺序，先做 `wcc.map.set_script` 参数契约 + 假 adapter 单测，再做 G4 示例资产。
+两项都是**纯文本可闭环**工作，不依赖 1.31+ 客户端、真实 `.w3x` 或外部工具。状态行仍为
+「P2 进行中（条件触发）」，**阶段 A / B 未解封**。本轮用户同时明确了资源到位约束（见 §5 环境就绪检查表后）。
+
+| 任务 | 落地 | 验证 |
+|---|---|---|
+| P2-6 `wcc.map.set_script` | `harness/src/scripts.js` 新增 `mapSetScript` handler 与 manifest 条目（`external-write` / 需审批）。强制 `targetPatch`（仅接受 `1.31+`）与 `strategy`（`script-only\|durable\|gui`）；`script-only` 返回 `script-only-not-durable` + 明确「WE 重存会丢失」警告且**不写图**；`durable` / `gui` 必须先有 `mapVerify` 逐字节证据、再显式注入 adapter，缺任一即 fail-closed。**本层永不写 `.w3x`**，产物路径强制 `*.edited.w3x` 副本。 | 新增 5 条测试，覆盖缺 `targetPatch` / 1.26 拒绝 / 缺或非法 `strategy` / 缺 map / 缺 script / script-only 不写 / 无 roundTrip 阻断 / 无 adapter 阻断 / 假 adapter 的参数断言 / adapter 失败与抛错 / `runScript` 审批：harness **32/32** |
+| G4 示例资产 | `tables-sample.json` 扩到 3 章（**保留** `units/waves/dialogue/quests` 顶层结构以兼容 `table-import.js`，第一条 wave 仍为 `ugho`）；新增 `src/chapter_02.lua` / `chapter_03.lua`（标「示例，未进图」，Boss `bossId` 刻意留空不臆造四字码）；新增 `manifest.json`（`targetPatch: "1.31+"` / `language: "lua"` / `mapGenerated: false`）；`main.lua` 导入但不自动 `Start()` 新章节；demo README 删除「完整战役 / 保存并运行就能看到剧情」虚标 | `table-import.test.js` 3/3；`bundleCampaign` → 10 modules / `missing: []` / 48957 bytes；`npm run check` **15 files / 0 errors / 3 warnings**（新增 2 文件零新增告警）；`npm test` **72/72** |
+
+**全量回归**：`npm test` **72/72**（sidecar 37 + lua-check 2 + shared 1 + harness 32）·
+`npm run check` 15 files / 0 errors / 3 warnings · harness demo EXIT=0 · CLI selftest 32/32 ·
+`npm run docs:check` 7 PASS · `npm run build:desktop` 如实 EXIT=1 · `npm run sync` 推两端并三方校验。
+
+**🔴 如实标注**：`wcc.map.set_script` 只交付了**参数契约 + 假 adapter 单测**；没有任何真实
+MCP `wc3_set_durable_script` / `w2l obj` adapter 接入，`set_script` 从未写过 `.w3x`，也不等于
+「脚本已进图」。合成字节块只证明 sha256 与字节比较逻辑。仓库仍零 `.w3x`；示例 3 章是文本样本、
+不是可玩战役；物编字典覆盖率仍 **0**。阶段 B2/B3/B4 与阶段 A 全部未解封。
 
 ---
 

@@ -1,0 +1,21 @@
+{
+  "schema": "wcc-campaign-manifest/1",
+  "id": "demo-campaign",
+  "title": "WCC 示例战役",
+  "targetPatch": "1.31+",
+  "language": "lua",
+  "entry": "src.main",
+  "chapters": ["ch1", "ch2", "ch3"],
+  "tables": "tables-sample.json",
+  "scriptPackage": "dist/build/war3map.lua",
+  "mapGenerated": false,
+  "generatedMap": null,
+  "status": "🔴 示例资产，未进图；不产出 .w3x",
+  "notes": [
+    "双轨决策（B+A）：以 1.31+ / Lua 为开发主线，本机 War3 1.26 只读保留、不升级不替换。",
+    "mapGenerated=false 是事实声明：build_map 只产 war3map.lua 脚本包与 src-tree/，仓库零 .w3x。",
+    "字段命名与 IR 唯一契约 .wcc/ir/<map-id>/manifest.json 对齐（targetPatch / language），但本文件是示例级配置，不是某张真实地图的 IR 产物。",
+    "tables-sample.json 内所有 rawcode 均为未核实示例值；物编 ID 字典覆盖率 0，🔴 不可用于生成代码。",
+    "章节脚本 chapter_02.lua / chapter_03.lua 是 few-shot 示例骨架，需显式调用 Start()，未接入真实战役流程。"
+  ]
+}

@@ -179,6 +179,7 @@ AI会自动生成符合WCC规范的代码！
 - [docs/NEW-MACHINE-SETUP.md](docs/NEW-MACHINE-SETUP.md) — 换机迁移清单、回归验证、1.31+ 环境就绪检查
 - [docs/DEPLOYMENT-SHORTCUTS.md](docs/DEPLOYMENT-SHORTCUTS.md) — 部署快捷方式建议与红线
 - [wcc-skill/knowledge/wc3-object-ids.md](wcc-skill/knowledge/wc3-object-ids.md) — **物编 ID 字典骨架**（🔴 覆盖率 0，绝不编造四字码）
+- [examples/demo-campaign/manifest.json](examples/demo-campaign/manifest.json) — 示例战役双轨配置（`targetPatch` / `language` / `mapGenerated: false`）；3 章样本见 `tables-sample.json`
 
 **参考（结论有效，非排期）**
 

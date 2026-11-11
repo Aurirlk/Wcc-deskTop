@@ -16,6 +16,11 @@
 | 测试底图 | 零 | 🔴 无法跑「脚本包 → 真实地图」闭环 |
 | 游戏美术资产 | 零（模型/贴图/图标/音效） | ✅ 刻意合规：ADR §八「不分发暴雪资产」 |
 | 知识素材 | `wcc-skill/` 4 knowledge + 4 patterns（含新增的字典骨架）；`vendor/wc3-lua-annotations` 4635 行 | ✅ 全项目最厚的一块，是真正的资产 |
+
+> **现行状态注记（2026-11-11，见主计划附录 A.7）**：上表「章节示例 / 战役数据表」两行是 11-09 调研原文，
+> 现已扩充为 **3 章**（`chapter_01/02/03.lua`）、**3 波刷怪**、**主线 + 支线任务**、Boss 骨架，
+> 并新增 `examples/demo-campaign/manifest.json` 双轨字段。但**所有 rawcode 仍未核实**（字典覆盖率 0），
+> 且仍**零真实底图**：🔴 端到端「脚本包 → 真实 `.w3x`」依旧无法验证。
 | 参考实现 | 仅 `wcc-lib/` 11 个自研 Lua 模块 / 1848 行 | 🟠 无外部生态参照 |
 
 > **现行状态（2026-11-11）**：上表「物编 ID 字典 = 零」指**可核实的数据条目为零**，这一判定仍成立。
@@ -123,6 +128,7 @@ WCC 的 AI 最容易出错的地方不是「不会写 Lua」，而是**瞎编魔
 1. **选一张真实 `.w3x` 作底图** — 按 [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md) 两阶段 P0 验收，从 `Maps\Scenario\` 选一张非加密官方小图，只产出 `.edited.w3x` 副本（原图不动）。
    **不要**补一个虚构的示例地图文件，也不要在 WE 触发器里写 `require("src.main")`。
 2. **扩充 `tables-sample.json` 到 3 章** — 对话 / 任务 / 刷怪 / Boss 各给完整样本，AI 才有格式可依。
+   ✅ **2026-11-11 已交付**（见主计划附录 A.7）；但 rawcode 未核实、零真实底图，闭环仍 🔴。
 3. **补完物编 ID 表** — 骨架已在 `wcc-skill/knowledge/wc3-object-ids.md`，但已核实条目仍为空；按该文 §6 的流程从 SLK 逐条登记来源，**绝不编造 ID**。这仍是 ROI 最高的一项。
 4. **进图能力按两阶段 P0 建设** — 先文本 IR + `wcc.map.snapshot` / `diff` / `verify`，再阶段 A 数据改写、阶段 B E3 Lua 注入；`build_map` 目前只产 `war3map.lua` 脚本包、不写二进制 `.w3x`（见 [MAP-COMPILE-PIPELINE.md](MAP-COMPILE-PIPELINE.md)）。
 5. **3 章 demo + 端到端测试** — 有了底图才能真正跑「生成 → check → 注入 → 进游戏 → 日志回流」。

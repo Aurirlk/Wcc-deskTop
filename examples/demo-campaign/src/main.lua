@@ -10,6 +10,10 @@ local Quest = require("src.lib.wcc-quest")
 
 -- 导入关卡逻辑
 local Chapter01 = require("src.chapter_01")
+-- 章节 2 / 3 是 few-shot 示例骨架（🔴 未进图）：一并打包以便 build_map 校验
+-- require 图与 lua_check，但不自动 Start()。真实战役流程需显式调用。
+local Chapter02 = require("src.chapter_02")
+local Chapter03 = require("src.chapter_03")
 
 -- 初始化函数
 local function Init()
@@ -29,6 +33,8 @@ end
 Core.SafeExecute(Init)
 
 return {
-    version = "1.0.0",
-    chapter01 = Chapter01
+    version = "1.1.0",
+    chapter01 = Chapter01,
+    chapter02 = Chapter02,
+    chapter03 = Chapter03
 }
