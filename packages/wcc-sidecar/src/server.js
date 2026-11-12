@@ -432,6 +432,51 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // ---- Product wiring (2026-11-12): the 7-layer pipeline really runs on every
+  // model call. These endpoints expose that SAME instance; no second state.
+  if (url.pathname === "/harness/pipeline") {
+    const state = agent.harnessState();
+    return json(res, 200, {
+      layers: harness.pipeline.list(),
+      journal: harness.pipeline.journal().slice(-30),
+      lastTurn: state.pipeline,
+      pipelineWired: state.pipelineWired,
+      spec: harness.spec.summary(),
+    });
+  }
+  if (url.pathname === "/harness/tui-state") {
+    const state = agent.harnessState();
+    return json(res, 200, {
+      ...harness.tuiState(),
+      source: "sidecar",
+      mode: "product",
+      steering: state.steering
+        ? { selectedIds: state.steering.selectedIds, savedChars: state.steering.savedChars }
+        : { selectedIds: [], savedChars: 0 },
+      pipeline: state.pipeline,
+    });
+  }
+  // annotateSteering WRITES skill docs. Default is a dry-run; only an explicit
+  // POST {"write":true} changes files, so a stray GET can never edit the repo.
+  if (url.pathname === "/harness/annotate") {
+    let write = false;
+    if (req.method === "POST") {
+      const raw = await readBody(req);
+      try {
+        write = JSON.parse(raw || "{}").write === true;
+      } catch {
+        return json(res, 400, { error: "invalid JSON body" });
+      }
+    }
+    const result = harness.annotateSteering({ write });
+    return json(res, 200, {
+      ...result,
+      note: write
+        ? "front matter written into skill docs — review git diff before committing"
+        : "dry-run only; no file was written",
+    });
+  }
+
   // WP7: the "检查" view displays a real checker result, not a chat forward.
   // Reuse the SAME lua_check tool implementation the agent calls (no second
   // checker, no model / API key required).

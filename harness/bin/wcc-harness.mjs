@@ -13,6 +13,8 @@
  *   node harness/bin/wcc-harness.mjs providers | budget | probe | scripts
  *   node harness/bin/wcc-harness.mjs steering annotate --write   (改仓库文件)
  *   node harness/bin/wcc-harness.mjs tui --static | tui
+ *   node harness/bin/wcc-harness.mjs tui --static --remote http://127.0.0.1:47840
+ *     (reads the SAME harness state from the product Sidecar, no second store)
  *   node harness/bin/wcc-harness.mjs selftest
  */
 import fs from "node:fs";
@@ -158,8 +160,31 @@ switch (cmd) {
   case "scripts": out(SCRIPT_MANIFEST); break;
 
   case "tui": {
-    const h = mk();
+    // With --remote the TUI is a SECOND SURFACE of the product's ONE harness
+    // instance (双表面可以，双数据源不行). Without it, it stays offline.
+    const remote = val("--remote", "");
+    let remoteState = null;
+    if (remote) {
+      try {
+        const base = remote.replace(/\/$/, "");
+        const r = await fetch(`${base}/harness/tui-state`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        remoteState = await r.json();
+      } catch (e) {
+        out({
+          ok: false,
+          error: `remote harness state unavailable: ${String(e.message || e)}`,
+          hint: "先启动 npm run sidecar，或去掉 --remote 使用离线 TUI",
+        });
+        break;
+      }
+    }
+    const h = mk(); // local instance serves read-only slash commands only
+    const state = remoteState
+      ? { ...h.tuiState(), ...remoteState, mode: remoteState.mode || "remote" }
+      : h.tuiState();
     const tui = h.createTerminal({
+      state,
       interactive: !has("--static") && Boolean(process.stdin.isTTY),
       onCommand: async (c, arg) => {
         if (c === "/spec") return JSON.stringify(h.spec.summary());
@@ -171,9 +196,11 @@ switch (cmd) {
         return "ok";
       },
     });
-    tui.push("info", "WCC harness TUI 就绪（离线，不调用模型）");
+    tui.push("info", remoteState
+      ? `WCC harness TUI 已接入产品状态 ${remote}（同一数据源；/spec 等斜杠命令为本地只读查询）`
+      : "WCC harness TUI 就绪（离线，不调用模型）");
     if (has("--static")) {
-      out(renderStatic({ ...h.tuiState(), events: tui.getState().events }, { color: false }));
+      out(renderStatic({ ...state, events: tui.getState().events }, { color: false }));
     } else {
       tui.attach();
     }

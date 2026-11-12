@@ -603,3 +603,30 @@ test("P2-6 set_script: runScript routes to the handler and enforces approval", (
   assert.equal(r.written, false);
   assert.equal(r.id, "wcc.map.set_script");
 });
+
+test("prepareTurn product adapter: defaults unchanged, messages/history/budget are opt-in", async (t) => {
+  const d = tmp(t);
+  const h = createHarness({ projectRoot: d, skillRoot: SKILL, steeringBudget: 6000, maxTools: 8 });
+
+  // CLI / selftest default: harness owns its own history and scoped budget.
+  const a = await h.prepareTurn({ userText: "默认" });
+  assert.equal(a.budget.exceeded, false);
+  assert.equal(h.history.length, 1);
+  assert.equal(h.budget.snapshot().turns, 1);
+
+  // Product adapter: caller owns messages + a fresh budget; nothing leaks.
+  const ownBudget = createBudget({ maxTurns: 3, maxTokens: 60000 });
+  const ownMessages = [{ role: "user", content: "产品消息" }];
+  const b = await h.prepareTurn({
+    userText: "产品",
+    messages: ownMessages,
+    recordHistory: false,
+    budgetOverride: ownBudget,
+  });
+  assert.equal(h.history.length, 1, "recordHistory:false must not append a second history");
+  assert.equal(h.budget.snapshot().turns, 1, "product budget must not touch the harness budget");
+  assert.equal(ownBudget.snapshot().turns, 1);
+  assert.equal(b.budget.exceeded, false);
+  assert.deepEqual(b.messages, ownMessages, "compaction must not mutate the caller's array");
+  assert.match(b.system, /# Spec/);
+});

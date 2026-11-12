@@ -28,11 +28,16 @@ export function createPipeline({ trace = false } = {}) {
       if (i >= active.length) return undefined;
       const layer = active[i];
       const t0 = Date.now();
+      // Record on ENTRY, not in `finally`. A finally-based journal comes back
+      // in reverse (inner layers finish first), which is useless as a trace of
+      // what the pipeline actually did. `ms` is filled in afterwards.
+      const entry = trace ? { name: layer.name, ms: 0 } : null;
+      if (entry) journal.push(entry);
       let out;
       try {
         out = await layer.fn(ctx, () => dispatch(i + 1));
       } finally {
-        if (trace) journal.push({ name: layer.name, ms: Date.now() - t0 });
+        if (entry) entry.ms = Date.now() - t0;
       }
       return out;
     };
@@ -98,13 +103,17 @@ export function withToolInjection(injector) {
 
 export function withBudget(budget) {
   return async (ctx, next) => {
-    if (!budget) return next();
-    budget.beginTurn();
-    budget.consume(ctx.system || "", { label: "system" });
-    budget.consume(ctx.tools || [], { label: "tool-schemas" });
-    budget.consume(ctx.userText || "", { label: "user" });
-    const verdict = budget.check();
-    ctx.budget = { ...verdict, snapshot: budget.snapshot() };
+    // The product owns a fresh per-turn budget (a cumulative one would exhaust
+    // after 8 user turns). CLI / selftest leave ctx.budgetOverride unset and
+    // keep using the harness-scoped budget exactly as before.
+    const active = ctx.budgetOverride || budget;
+    if (!active) return next();
+    active.beginTurn();
+    active.consume(ctx.system || "", { label: "system" });
+    active.consume(ctx.tools || [], { label: "tool-schemas" });
+    active.consume(ctx.userText || "", { label: "user" });
+    const verdict = active.check();
+    ctx.budget = { ...verdict, snapshot: active.snapshot() };
     if (verdict.exceeded) return; // short-circuit: no model call this turn
     return next();
   };
@@ -146,14 +155,20 @@ export function withApproval({ autoApprove = false, request = null } = {}) {
   };
 }
 
+/** ONE offload implementation, shared by the pipeline layer and the product. */
+export function wrapToolResultEntries(scratch, results, meta = {}) {
+  if (!scratch || !Array.isArray(results)) return results;
+  return results.map((r) => ({
+    ...r,
+    wrapped: scratch.wrapToolResult(r.name || "tool", r.output, meta),
+  }));
+}
+
 export function withScratch(scratch) {
   return async (ctx, next) => {
     await next();
-    if (scratch && Array.isArray(ctx.toolResults)) {
-      ctx.toolResults = ctx.toolResults.map((r) => ({
-        ...r,
-        wrapped: scratch.wrapToolResult(r.name || "tool", r.output, { turn: ctx.turn }),
-      }));
+    if (Array.isArray(ctx.toolResults)) {
+      ctx.toolResults = wrapToolResultEntries(scratch, ctx.toolResults, { turn: ctx.turn });
     }
   };
 }

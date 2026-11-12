@@ -20,7 +20,7 @@
 
 ## 0. 现状与开发目标
 
-`harness/` 已接入主产品 Agent Loop，`server.js` 暴露 `/harness/*` 并共用同一实例；产品侧**仍未接线**的是 7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering`（仅 CLI 与自测使用；产品化见 P3 / P4 纲要）。状态虚标与门禁空转的修复记录见附录 A.4。桌面 UI → Sidecar → Agent → 工具 → Lua 静态检查 → `war3map.lua` 脚本包这条链代码上可跑；**「一句话 → 真实模型生成 Lua → 检查 → 产出可试玩 `.w3x`」端到端未通**。硬断点在 `build-map.js` 只产文本脚本包、仓库零 `.w3x`、无地图数据层。
+`harness/` 的 7 层 pipeline 在产品主循环中运行：`agent.js` 每次模型调用都经 `prepareTurn()` 跑 planning/spec → steering → tools → compaction → approval → budget → scratch；产品传自己的 messages 与每轮新 budget（`recordHistory:false` / `budgetOverride`），**只有一份会话历史**。`server.js` 新增 `/harness/pipeline`、`/harness/tui-state`、`/harness/annotate` 并共用同一实例；CLI TUI 用 `--remote` 读产品状态。执行记录见附录 A.9。状态虚标与门禁空转的修复记录见附录 A.4。桌面 UI → Sidecar → Agent → 工具 → Lua 静态检查 → `war3map.lua` 脚本包这条链代码上可跑；**「一句话 → 真实模型生成 Lua → 检查 → 产出可试玩 `.w3x`」端到端未通**。硬断点在 `build-map.js` 只产文本脚本包、仓库零 `.w3x`、无地图数据层。
 
 ### 开发目标（唯一权威陈述 · 2026-11-11 用户拍板）
 
@@ -46,10 +46,10 @@
 
 | 命令 / 检查 | 实测结果 |
 |---|---|
-| `npm test` | 72 pass / 0 fail（sidecar 37 + lua-check 2 + shared 1 + harness 32） |
+| `npm test` | 76 pass / 0 fail（sidecar 40 + lua-check 2 + shared 1 + harness 33） |
 | `npm run check` | 15 files / 0 errors / 3 warnings / ok=true（warning 为复核提示，不阻断） |
 | `node harness/bin/wcc-harness.mjs demo` | EXIT=0，离线全链路 |
-| `node harness/bin/wcc-harness.mjs selftest` | 32/32 |
+| `node harness/bin/wcc-harness.mjs selftest` | 33/33 |
 | `node scripts/optional-electron.js` | `electron NOT usable: dist folder missing`，`dev:desktop` 起不来 |
 | `npm run build:desktop` | EXIT=1 + `electron-builder packaging is P3 and is NOT implemented`（不再假成功） |
 | 全仓 `.w3x` / `.w3m` | 零个 |
@@ -124,13 +124,13 @@ G0 地基与 G1 文本 IR 的任务表与实测记录见附录 A.5；下表只�
 ### 7.1 每阶段必跑
 
 ```bash
-npm test                                   # 基线 72/72；代码改动须追加测试并说明新增数
+npm test                                   # 基线 76/76；代码改动须追加测试并说明新增数
 npm run check                              # 15 files / 0 errors / 3 warnings / ok=true
 node harness/bin/wcc-harness.mjs demo       # EXIT=0
-node harness/bin/wcc-harness.mjs selftest   # 32/32
+node harness/bin/wcc-harness.mjs selftest   # 33/33
 node scripts/optional-electron.js           # 必须报 NOT usable，不得谎报 present
 npm run sync:check                         # 推前校验三处一致
-npm run docs:check                         # 文档口径门禁，9 PASS / 0 FAIL（9 条断言）
+npm run docs:check                         # 文档口径门禁，10 PASS / 0 FAIL（10 条断言）
 ```
 
 P2 追加：三脚本负例单测、sha256 比对输出、WE / Test Map 截图与日志回流。
@@ -229,6 +229,7 @@ P2 追加：三脚本负例单测、sha256 比对输出、WE / Test Map 截图�
 | WP9 复跑 | 全量回归 + 门禁 + 双端同步 | `npm test` **60/60**（sidecar 37 + lua-check 2 + shared 1 + harness 20）；`npm run check` 13 files / 0 errors / 3 warnings / ok=true；harness demo EXIT=0；CLI selftest 20/20；`npm run docs:check` 7 PASS；`npm run sync` 后三处一致 |
 
 **如实标注**：7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 在产品侧仍为 0 调用，本阶段不强行接线（P3 纲要）；`dev:desktop` 与 Electron 二进制仍不可用；真实模型 key 未配置；全仓零 `.w3x`。这些都不写成已闭环。
+> **（2026-11-12 注）**：上面的「0 调用」是 A.4 当时状态，已于附录 A.9 接线；其余边界仍成立。
 
 **排查记录**：WP7 的 `/check` 回归最初写成在同一测试文件内并发启动两个 sidecar 子进程，Windows / Node 22 下触发 `0xC0000409` 使测试进程整体崩溃。手工起服务确认端点本身正常（HTTP 200 / 500 均正确），改为复用同一个子进程后 2/2 通过；不是端点缺陷，也不是掩盖失败。
 
@@ -329,6 +330,33 @@ harness demo EXIT=0 · CLI selftest 32/32 · `npm run docs:check` **9 PASS / 0 F
 最终目标仍 🔴 未达成，仓库零 `.w3x`、Electron 二进制缺失、真实模型 key 未配置；
 阶段 A/B 与物编 ID 核实按「本机魔兽资产至少 3 天后到位、当前网络不支持下载」保持封锁，**不按日期自动解封**；
 7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI 在产品侧仍 0 调用。状态行仍是「P2 进行中（条件触发）」。
+> **（2026-11-12 注）**：本行是 A.8 当时的记录，其中「产品侧仍 0 调用」已被附录 A.9 推翻；状态行不变。
+
+---
+
+## A.9 产品侧接线：7 层 pipeline 进入主循环（2026-11-12）
+
+**范围**：用户 11-12 决定「先不等资源，做产品侧」，把此前仅 CLI / 自测使用的 pipeline /
+`prepareTurn` / spec 每轮注入 / `annotateSteering` / TUI 接进产品。**不改 P2 状态行**，
+阶段 A/B 仍按自备 1.31+ 环境条件触发。
+
+| 任务 | 落地 | 验证 |
+|---|---|---|
+| harness 产品适配 | `middleware.js` 的 `withBudget` 支持 `ctx.budgetOverride`（默认仍用共享 budget，CLI 不变）；`wrapToolResultEntries` 成为卸载的唯一实现，`withScratch` 与产品侧共用。`index.js` 的 `prepareTurn` 增加 `messages` / `recordHistory` / `budgetOverride`，新增 `offloadToolResults` | `harness/test/harness.test.js` 新增用例断言默认行为不变、产品参数不污染 harness 的 history 与 budget → **33/33** |
+| 管线 journal 顺序 | `createPipeline.run` 改为**进入时**记录（原先 `finally` 记录导致反序 `[scratch…planning]`），`ms` 在结束时回填 | 新测试断言 journal 顺序恰为 7 层 |
+| 主循环走管线 | `agent.js` 每次模型调用前跑 `h.prepareTurn()`，用 `ctx.system` / `ctx.tools` / `ctx.messages` 组装请求；删除手工 `assembleSystem` / `toolDefs` / 压缩 / 预算检查的重复实现。保留离线路径、`dispatchTool` 路由、质量门禁回喂 | `pipeline-wiring.test.js` 3 例：system 含 `# Spec` 与 `# Steering`、journal 7 层有序、`harness.history` 长度 0、10 个用户轮次不耗尽预算、大工具结果经 scratch 卸载 |
+| 状态与端点 | `server.js` 新增 `/harness/pipeline`（层开关 + journal + spec）、`/harness/tui-state`（同一实例状态）、`/harness/annotate`（**默认 dry-run**，仅 POST `{"write":true}` 才改仓库文件）；`harnessState()` 增加 `pipeline` / `pipelineWired` | 实机启动 sidecar 逐个 curl；离线 TUI `tui --static` 回归正常 |
+| CLI TUI 共用状态 | `wcc-harness.mjs tui --static --remote <url>` 从产品 `/harness/tui-state` 读状态，状态栏显示 `WCC product`；无 `--remote` 时保持离线并如实标注 | 实机输出 `WCC product │ model:✗ …`；断连时给出明确错误与提示，不静默降级 |
+
+**全量回归（本机实测）**：`npm test` **76/76**（sidecar 40 + lua-check 2 + shared 1 + harness 33）·
+`npm run check` 15 files / 0 errors / 3 warnings · harness demo EXIT=0 · CLI selftest 33/33 ·
+`npm run docs:check` **10 PASS / 0 FAIL** · `npm run sync` 推两端并三方校验。
+
+**如实标注**：以上只解决「产品侧没用上 harness 编排」，**没有**改变端到端断点：
+`build_map` 仍只产 `war3map.lua`、仓库零 `.w3x`、Electron 二进制缺失、真实模型 key 未配置。
+`/harness/annotate` 的 `write:true` 会改 skill 文档 front matter，默认不写。
+附录 A.4 / A.5 / A.8 中「pipeline / `prepareTurn` / spec 每轮注入 / TUI 产品侧 0 调用」均为
+**当时记录**，已于本阶段推翻；按防过期机制保留原文不改。状态行仍是「P2 进行中（条件触发）」。
 
 ---
 

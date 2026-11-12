@@ -10,11 +10,13 @@
  * Zero npm dependencies. All state lives under <projectRoot>/.wcc/
  * (already gitignored by the repository).
  *
- * P1.5 status (2026-11-11): the Sidecar imports this module and uses steering /
- * injector / budget / scratch / hooks / dispatch. The 7-layer pipeline,
- * prepareTurn(), per-turn spec injection, TUI and annotateSteering remain
- * CLI / selftest surfaces only — NOT called by the product yet. Do not claim
- * they are wired.
+ * Product wiring (2026-11-12): `agent.js` runs all 7 pipeline layers through
+ * prepareTurn() on EVERY model call — planning/spec, steering, tool injection,
+ * compaction, approval, budget, scratch. The product passes its own messages
+ * and a fresh per-turn budget so there is still only ONE conversation history
+ * and no cumulative-budget exhaustion. TUI state and annotateSteering are
+ * exposed through the Sidecar's /harness/* endpoints; the CLI TUI can consume
+ * that same state with `--remote` instead of building a second live store.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -26,7 +28,7 @@ import { resolveProvider, listProviders } from "./providers.js";
 import { createBudget, STOP_REASONS } from "./budget.js";
 import { createHookBus, installDefaultHooks } from "./hooks.js";
 import { createToolInjector } from "./tool-inject.js";
-import { createPipeline, withPlanning, withSteering, withToolInjection, withBudget, withContextCompaction, withApproval, withScratch } from "./middleware.js";
+import { createPipeline, withPlanning, withSteering, withToolInjection, withBudget, withContextCompaction, withApproval, withScratch, wrapToolResultEntries } from "./middleware.js";
 import { runScript, findScript, describeScripts, probeForge } from "./scripts.js";
 import { createTui, defaultState } from "./tui.js";
 
@@ -88,11 +90,21 @@ export function createHarness({
   let turn = 0;
   const history = [];
 
-  /** Build everything a model call needs — no network, fully inspectable. */
+  /** Build everything a model call needs — no network, fully inspectable.
+   *
+   * Product adapter options (all optional; CLI / selftest defaults unchanged):
+   *  - `messages`: the caller's own conversation array. Without it the harness
+   *    uses its internal history (CLI mode). Compaction writes to ctx.messages,
+   *    never to the caller's array.
+   *  - `recordHistory: false`: the product owns the ONE conversation history,
+   *    so prepareTurn must not push a second copy into harness.history.
+   *  - `budgetOverride`: a fresh per-turn budget from the product.
+   */
   async function prepareTurn({
     userText = "", files = [], explicit = [], expert = "",
     needForge = false, dynamicForgeTools = [], pendingToolCalls = [],
     system = "", toolResults = null,
+    messages = null, recordHistory = true, budgetOverride = null,
   } = {}) {
     turn += 1;
     const ctx = {
@@ -108,15 +120,23 @@ export function createHarness({
       dynamicForgeTools,
       pendingToolCalls,
       toolNames: (injector.catalog || []).map((t) => t.name),
-      messages: history.slice(),
+      messages: Array.isArray(messages) ? messages : history.slice(),
       toolResults,
+      ...(budgetOverride ? { budgetOverride } : {}),
     };
     await hooks.emit("turn.start", { turn, userText });
     await pipeline.run(ctx);
-    if (!ctx.budget?.exceeded && ctx.approval?.status !== "denied" && ctx.approval?.status !== "blocked") {
+    if (recordHistory && !ctx.budget?.exceeded && ctx.approval?.status !== "denied" && ctx.approval?.status !== "blocked") {
       history.push({ role: "user", content: userText });
     }
     return ctx;
+  }
+
+  /** Offload tool results through the SAME scratch implementation the pipeline
+   *  layer uses. The product calls this after tools run (pipeline runs before
+   *  the model call, when there are no results yet). */
+  function offloadToolResults(results = [], meta = {}) {
+    return wrapToolResultEntries(scratch, results, meta);
   }
 
   /** Dispatch harness-owned tools. Shape matches Sidecar tools.dispatch(). */
@@ -194,7 +214,7 @@ export function createHarness({
     root, skillRoot: resolvedSkillRoot,
     spec, scratch, steering, hooks, budget, provider, injector, pipeline,
     prepareTurn, dispatch, emit, tuiState, createTerminal, annotateSteering,
-    history, STOP_REASONS,
+    offloadToolResults, history, STOP_REASONS,
     layers: () => pipeline.list(),
   };
 }

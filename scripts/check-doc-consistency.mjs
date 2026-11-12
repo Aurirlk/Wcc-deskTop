@@ -142,6 +142,12 @@ add("8 README 唯一使用入口齐备",
     ? USAGE_KEYS.filter((k) => !readmeText.includes(k)).map((k) => `README 缺少：${k}`)
     : ["README.md 不存在"]);
 
+// 9. The two live entry docs must never drift back to the old "pipeline is
+// CLI-only / 0 product calls" claim (historical appendix entries are exempt).
+const LIVE_ENTRIES = ["AGENTS.md", "README.md"].flatMap(fileIfExists);
+add("9 产品侧接线口径未倒退",
+  hits(LIVE_ENTRIES, /产品侧.{0,16}0 调用|只是 CLI 与自测里可用|只在 CLI 与自测/));
+
 console.log("=== WCC 文档一致性门禁（npm run docs:check）===");
 let failed = 0;
 for (const c of checks) {

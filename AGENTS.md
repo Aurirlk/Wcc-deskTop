@@ -55,7 +55,10 @@ maxChars: 4200
 - ✅ **P1 / P1.5 已接入**：`createHarness()` 在 `agent.js`（steering / injector / budget /
   scratch / hooks / 工具路由），`server.js` 暴露 `/harness/*` 并共用同一实例；显式注入仓库根
   唯一 `AGENTS.md`，`/health` 为真实探测，renderer 有状态面板，`/check` 复用同一 `lua_check`。
-  7 层 pipeline / `prepareTurn` / spec 每轮注入 / TUI / `annotateSteering` 产品侧仍 0 调用。
+- ✅ **产品侧管线已接线（11-12）**：每次模型调用都跑 7 层 pipeline（planning/spec → steering →
+  tools → compaction → approval → budget → scratch）。产品传自己的 messages 与每轮新 budget
+  （`recordHistory:false` / `budgetOverride`），**只有一份会话历史**；`/harness/pipeline`、
+  `/harness/tui-state`、`/harness/annotate` 暴露同一实例，CLI TUI 用 `--remote` 读产品状态。
 - ✅ **P2 地基已落地**：`wcc.map.snapshot` / `diff` / `verify` 三个文本 IR 闸门（纯 node、
   零依赖）；`verify` 缺外部序列化器时 fail-closed。`wcc-skill/knowledge/wc3-object-ids.md`
   是**覆盖率 0 的骨架**，绝不编造四字码。
@@ -69,6 +72,6 @@ maxChars: 4200
 - 本机 Electron 二进制缺失（`npm run build:desktop` 如实 EXIT=1，打包属 P3）；真实模型 key 未配置。
 - 本机 War3 1.26 只支持 JASS。**B+A 双轨已拍板**：1.31+ / Lua 主线，本机 1.26 只读保留、
   不升级不替换；`manifest.json` 记 `targetPatch` 与 `language`；1.31+ 环境由用户自备。
-- 现行基线：`npm test` 72/72、`npm run check` 15 files / 0 errors / 3 warnings、
-  CLI selftest 32/32、`npm run docs:check` 9 PASS。
+- 现行基线：`npm test` 76/76（sidecar 40 + lua-check 2 + shared 1 + harness 33）、
+  `npm run check` 15 files / 0 errors / 3 warnings、CLI selftest 33/33、`npm run docs:check` 10 PASS。
   排期与执行记录见 `docs/NEXT-DEVELOPMENT-PLAN.md`（正文 + 附录 A）。

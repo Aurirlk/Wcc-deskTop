@@ -155,11 +155,15 @@ curl -s -X POST http://127.0.0.1:47840/config \
 | GET | `/harness/state`、`/harness/steering`、`/harness/tools` | 产品进程内**同一个** harness 实例的只读视图 |
 | GET | `/harness/providers`、`/harness/spec`、`/harness/hooks`、`/harness/scratch` | 预设、spec、hook 日志、scratch |
 | POST | `/harness/dispatch` | 手动触发工具（需审批的工具走审批） |
+| GET | `/harness/pipeline` | 7 层管线开关 + 每轮 journal（**真实执行**）+ spec |
+| GET | `/harness/tui-state` | 产品 harness 状态，供 CLI TUI `--remote` 读同一份数据 |
+| GET/POST | `/harness/annotate` | 补 skill 文档 front matter；GET 默认 dry-run，仅 POST `{"write":true}` 才写文件 |
 | GET | `/session/*`、`/workbench/*`、`/maps/*`、`/forge/*`、`/onboarding/*` | 会话、工作台、地图源、forge、向导 |
 
 ```bash
 curl -s "http://127.0.0.1:47840/harness/steering?intent=%E5%86%99lua%E5%B9%B6%E6%A3%80%E6%9F%A5"
 curl -s "http://127.0.0.1:47840/harness/tools?intent=%E5%86%99lua"
+curl -s "http://127.0.0.1:47840/harness/pipeline"
 curl -s -X POST http://127.0.0.1:47840/build \
   -H "Content-Type: application/json" -d '{"entry":"src.main"}'
 ```
@@ -168,7 +172,8 @@ curl -s -X POST http://127.0.0.1:47840/build \
 `src-tree/`、`README.md`、`build-stats.json`。`dist/` 是生成物，被 gitignore 忽略、不入库。
 端点实现的唯一真相是 `packages/wcc-sidecar/src/server.js`；桌面 IPC 见
 `apps/wcc-desktop/src/preload/preload.cjs`。`/harness/spec` `/harness/hooks` `/harness/scratch`
-`/harness/dispatch` 目前在桌面 UI 侧没有 IPC 通道，需直接 HTTP 调用。
+`/harness/dispatch` 以及新增的 `/harness/pipeline` `/harness/tui-state`
+`/harness/annotate` 目前在桌面 UI 侧没有 IPC 通道，需直接 HTTP 调用。
 
 ### harness CLI（零依赖，可独立跑）
 
@@ -182,10 +187,13 @@ node harness/bin/wcc-harness.mjs spec status
 node harness/bin/wcc-harness.mjs scripts
 node harness/bin/wcc-harness.mjs providers
 node harness/bin/wcc-harness.mjs tui --static
+node harness/bin/wcc-harness.mjs tui --static --remote http://127.0.0.1:47840
 ```
 
 `steering annotate --write` 会改仓库文件（默认 dry-run）；`tui`（不带 `--static`）需要真 TTY。
-7 层 pipeline / `prepareTurn` / spec 每轮注入 / 交互式 TUI 目前**只在 CLI 与自测里可用**，产品侧 0 调用。
+7 层 pipeline 已在**产品主循环**每次模型调用时执行（见 `/harness/pipeline` 的 journal）；
+CLI TUI 加 `--remote` 后读取产品 Sidecar 的同一份状态，不再另建实例。
+`/harness/annotate` 默认 dry-run，只有显式 POST `{"write":true}` 才改仓库文件。
 
 ### 当前能做什么 / 不能做什么
 
@@ -195,6 +203,7 @@ node harness/bin/wcc-harness.mjs tui --static
 | 打包 `war3map.lua` 脚本包、3 章示例资产 | 无 key 时真实模型生成 |
 | 文本 IR 的 snapshot / diff / verify 闸门 | 真实 `.w3x` round-trip、脚本注入 |
 | harness 条件注入 / 按需工具 / 预算 / scratch | electron 打包分发、真 forge 联调 |
+| 7 层 pipeline 每轮编排、TUI `--remote` 共用状态 | TUI 嵌进 Electron（不做，改用 `--remote`） |
 | 离线 demo / selftest / 双端同步 | 物编 ID 查表（字典覆盖率 0） |
 
 阶段 A/B 与物编字典数据核实按用户自备环境**条件触发**：用户 2026-11-11 明确本机魔兽资产
@@ -209,7 +218,7 @@ node harness/bin/wcc-harness.mjs tui --static
 | `/chat` 只回文本、不调工具 | 未配 key，走 `offlinePlan()`；配 key 或选 `ollama` |
 | `npm run sync` 拒绝推送 | 分叉或已跟踪文件未提交；先 fetch + merge，禁止强推 |
 | `npm run docs:check` FAIL | 文档口径过期；按输出的命中行修正 |
-| `npm test` 偶发 `JavaScript heap out of memory` 或成片用例失败 | 本机可用内存偏低，而 `node --test` 默认按 CPU 核数（本机 16 核）并发起多个进程 → **不是代码缺陷**。单跑一次基线为 72/72；内存紧张时分别单跑各 suite，或给 `node --test` 加 `--test-concurrency=2`，**不要据此判定测试挂了** |
+| `npm test` 偶发 `JavaScript heap out of memory` 或成片用例失败 | 本机可用内存偏低，而 `node --test` 默认按 CPU 核数（本机 16 核）并发起多个进程 → **不是代码缺陷**。单跑一次基线为 76/76；内存紧张时分别单跑各 suite，或给 `node --test` 加 `--test-concurrency=2`，**不要据此判定测试挂了** |
 | 想确认某端点是否存在 | 直接读 `packages/wcc-sidecar/src/server.js` |
 
 ---

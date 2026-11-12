@@ -1,17 +1,14 @@
 /**
  * Agent loop with OpenAI-compatible streaming (SSE) + tool calling.
  *
- * P1 (2026-11-10): the standalone harness/ layer is now wired into the product.
- *   - steering  -> conditional system injection (was: skill.md 前 2000 字全量)
- *   - injector  -> on-demand tools (was: tools.list() 全量)
- *   - budget    -> turn/token/wall-clock stop (was: guard < 8 硬循环)
- *   - scratch   -> large tool results offloaded (was: slice(0, 50_000))
- *   - hooks     -> lua_check quality gate on file.write
- *   - dispatch  -> harness-owned tools routed to harness.dispatch()
- *
- * Offline mode (no API key) still returns a structured plan and invokes no
- * tools. `harness` is injectable so server.js and the renderer share ONE
- * instance (双表面可以，双数据源不行).
+ * Product wiring (2026-11-12): EVERY model call now runs the harness 7-layer
+ * pipeline through prepareTurn() — planning/spec, steering, tool injection,
+ * context compaction, approval, budget, scratch. The product passes its own
+ * messages (recordHistory:false) and a fresh per-turn budget (budgetOverride),
+ * so there is still ONE conversation history and no cumulative-budget drain.
+ * Hooks (lua_check quality gate), harness-owned tool dispatch and offline mode
+ * are unchanged. `harness` stays injectable: server.js and the renderer share
+ * ONE instance (双表面可以，双数据源不行).
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,7 +17,6 @@ import {
   createHarness,
   createBudget,
   resolveProvider,
-  summarizeHistory,
   patchToolCalls,
   STOP_REASONS,
 } from "../../../harness/src/index.js";
@@ -84,20 +80,6 @@ export function createAgent({
     return `# 专家：${expert.name}\n${expert.system}`;
   }
 
-  /** Conditional steering instead of a 2000-char blind slice of skill.md. */
-  function assembleSystem(intent = "", files = []) {
-    if (!h?.steering) return SYSTEM_ROLE;
-    const sel = h.steering.select({
-      intent,
-      files,
-      toolNames: h.injector.catalog.map((t) => t.name),
-      maxChars: steeringBudget,
-    });
-    const rendered = h.steering.render(sel);
-    h.lastSteering = sel;
-    return [SYSTEM_ROLE, expertBlock(), rendered].filter(Boolean).join("\n\n");
-  }
-
   function modelConfig() {
     const cfg = getConfig?.() || {};
     const p = resolveProvider({
@@ -114,20 +96,6 @@ export function createAgent({
       model: p.model,
       configured: p.configured,
     };
-  }
-
-  /** On-demand tool schemas instead of tools.list() in full. */
-  function toolDefs(intent = "", files = []) {
-    const cfg = getConfig?.() || {};
-    const plan = h.injector.select({
-      intent,
-      files,
-      expert: cfg.expert,
-      maxTools,
-      needForge: Boolean(cfg.needForge),
-    });
-    h.lastToolPlan = plan.plan;
-    return plan.tools;
   }
 
   function offlinePlan(userText) {
@@ -240,7 +208,7 @@ export function createAgent({
     return { role: "assistant", content: content || "" };
   }
 
-  async function callModel(messages, onEvent, intent = "", files = []) {
+  async function callModel(messages, onEvent, prepared) {
     const cfg = modelConfig();
     if (!cfg.configured) {
       const text = offlinePlan(messages.filter((m) => m.role === "user").at(-1)?.content || "");
@@ -248,7 +216,7 @@ export function createAgent({
       return { role: "assistant", content: text };
     }
     return streamChatCompletions(
-      { messages, tools: toolDefs(intent, files), tool_choice: "auto" },
+      { messages, tools: prepared?.tools || [], tool_choice: "auto" },
       onEvent
     );
   }
@@ -262,38 +230,61 @@ export function createAgent({
     history.push({ role: "user", content: userText });
 
     const files = [...String(userText).matchAll(/@([\w./-]+\.lua)/g)].map((m) => m[1]);
-    const messages = [{ role: "system", content: assembleSystem(userText, files) }, ...history.slice(-20)];
+    // The product owns ONE conversation history. On every model call we hand
+    // these messages to the harness pipeline with recordHistory:false, so no
+    // second copy accumulates inside harness.history.
+    const messages = history.slice(-20);
     let full = "";
     let feedbackInjected = false;
 
-    // Fresh budget per user turn: the shared h.budget is cumulative and would
-    // otherwise exhaust after 8 messages. maxTurns bounds this turn's tool loop.
+    // Fresh per-turn budget. pipeline's withBudget consumes THIS instance via
+    // ctx.budgetOverride, so a long session cannot drain a cumulative budget.
     const budget = createBudget({ maxTurns: 8, maxTokens: 60000 });
     h.lastBudget = budget;
-    budget.consume(messages[0].content, { label: "system" });
-    budget.consume(userText, { label: "user" });
     let stopReason = null;
     let step = 0;
 
     while (step < 8) {
       step += 1;
-      budget?.beginTurn();
-      const verdict = budget?.check?.() || { exceeded: false, stopReason: null };
-      if (verdict.exceeded) {
-        stopReason = verdict.stopReason || STOP_REASONS.MAX_TURNS;
+      const cfg = getConfig?.() || {};
+      const prep = await h.prepareTurn({
+        userText,
+        files,
+        system: [SYSTEM_ROLE, expertBlock()].filter(Boolean).join("\n\n"),
+        messages,
+        recordHistory: false,
+        budgetOverride: budget,
+        expert: cfg.expert,
+        needForge: Boolean(cfg.needForge),
+        dynamicForgeTools: [],
+        pendingToolCalls: [],
+        steeringBudget,
+        maxTools,
+      });
+
+      // Record the REAL pipeline output for /harness/state and the renderer.
+      h.lastSteering = prep.steering || null;
+      h.lastToolPlan = prep.toolPlan?.plan || null;
+      h.lastPipeline = {
+        turn: prep.turn,
+        journal: (h.pipeline?.journal?.() || []).slice(-7),
+        specStage: prep.spec?.stage || "none",
+        compaction: prep.compaction || null,
+        patchedToolCalls: prep.patchedToolCalls || 0,
+        approval: prep.approval?.status || null,
+      };
+      if (prep.patchedToolCalls) {
+        onEvent?.({ type: "harness", kind: "tool-calls-repaired", count: prep.patchedToolCalls });
+      }
+
+      if (prep.budget?.exceeded || prep.approval?.status === "denied" || prep.approval?.status === "blocked") {
+        stopReason = prep.budget?.stopReason || prep.approval?.status || STOP_REASONS.MAX_TURNS;
         break;
       }
 
-      // Compaction + broken tool-call repair before every model call.
-      const compacted = summarizeHistory(messages, { maxTokens: 24000, keepLast: 8 });
-      const repaired = patchToolCalls(compacted.messages);
-      const callMessages = repaired.messages;
-      if (repaired.patched) {
-        onEvent?.({ type: "harness", kind: "tool-calls-repaired", count: repaired.patched });
-      }
-
-      const msg = await callModel(callMessages, onEvent, userText, files);
-      budget?.consume(typeof msg.content === "string" ? msg.content : "", { label: "assistant" });
+      const callMessages = [{ role: "system", content: prep.system }, ...prep.messages];
+      const msg = await callModel(callMessages, onEvent, prep);
+      budget.consume(typeof msg.content === "string" ? msg.content : "", { label: "assistant" });
 
       if (msg.tool_calls?.length) {
         messages.push(msg);
@@ -310,11 +301,15 @@ export function createAgent({
           logger?.info?.(`tool ${name}`);
           const result = await dispatchTool(name, args);
 
-          // Scratch offload instead of a blind 50k slice.
+          // Offload through the harness's SINGLE scratch implementation — the
+          // same one withScratch uses inside the 7-layer pipeline.
           const raw = String(result.output ?? "");
-          const wrapped = h.scratch?.wrapToolResult(name, raw) ?? raw.slice(0, 50_000);
+          const [entry] = h.offloadToolResults
+            ? h.offloadToolResults([{ name, output: raw }], { turn: step })
+            : [{ wrapped: raw.slice(0, 50_000) }];
+          const wrapped = entry.wrapped ?? raw.slice(0, 50_000);
           const offloaded = wrapped !== raw;
-          budget?.consume(wrapped, { label: `tool:${name}` });
+          budget.consume(wrapped, { label: `tool:${name}` });
 
           onEvent?.({
             type: "tool_end",
@@ -403,6 +398,8 @@ export function createAgent({
     return {
       wired: harnessUsable(h),
       layers: h.layers(),
+      pipeline: h.lastPipeline || { turn: 0, journal: [], specStage: "none" },
+      pipelineWired: Boolean(h.lastPipeline && h.lastPipeline.journal.length >= 7),
       steering: h.lastSteering
         ? {
             selectedIds: h.lastSteering.selectedIds,
